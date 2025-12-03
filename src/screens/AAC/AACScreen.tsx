@@ -1,27 +1,47 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { BoardGrid } from '../../components/BoardGrid';
 import { MessageBar } from '../../components/MessageBar';
-import { demoBoard, demoProfile } from '../../data/coreBoard';
 import { useAACStore } from '../../store/aacStore';
+import { speakPhrase } from '../../services/tts';
 import { Tile } from '../../types/models';
 
 export const AACScreen: React.FC = () => {
-  const { addToken } = useAACStore();
+  const { activeBoard, profile, messageTiles, addTileToMessage, backspace, clearMessage } = useAACStore();
 
   const handleTilePress = (tile: Tile) => {
-    addToken(tile);
+    addTileToMessage(tile);
   };
+
+  const phrase = useMemo(() => messageTiles.map((t) => t.spokenText).join(' '), [messageTiles]);
+
+  const handleSpeak = () => {
+    speakPhrase(phrase, { voiceId: profile?.settings.voicePreference });
+  };
+
+  if (!activeBoard) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.centered]}>
+        <Text style={styles.title}>No board selected</Text>
+        <Text style={styles.subtitle}>Choose a profile from the caregiver home to begin.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <MessageBar voicePreference={demoProfile.settings.voicePreference} />
+      <MessageBar
+        tiles={messageTiles}
+        onSpeak={handleSpeak}
+        onBackspace={backspace}
+        onClear={clearMessage}
+      />
       <View style={styles.header}>
-        <Text style={styles.title}>{demoProfile.displayName} • Core Board</Text>
-        <Text style={styles.subtitle}>Stable 4x4 grid with high-frequency core words</Text>
+        <Text style={styles.title}>{profile?.displayName} • {activeBoard.name}</Text>
+        <Text style={styles.subtitle}>{activeBoard.description || 'Core communication board'}</Text>
       </View>
       <View style={styles.gridContainer}>
-        <BoardGrid board={demoBoard} onTilePress={handleTilePress} />
+        <BoardGrid board={activeBoard} onTilePress={handleTilePress} />
       </View>
     </SafeAreaView>
   );
@@ -31,6 +51,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f8fafc'
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    gap: 8
   },
   header: {
     paddingHorizontal: 16,

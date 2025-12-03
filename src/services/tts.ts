@@ -1,12 +1,21 @@
 import * as Speech from 'expo-speech';
 
-export const speak = (text: string, voiceId?: string) => {
-  if (!text.trim()) return;
+interface SpeakOptions {
+  rate?: number;
+  pitch?: number;
+  voiceId?: string;
+}
+
+export const speakPhrase = (text: string, options?: SpeakOptions) => {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+
   Speech.stop();
-  Speech.speak(text, {
-    voice: voiceId,
-    rate: 0.9
+  Speech.speak(trimmed, {
+    voice: options?.voiceId,
+    rate: options?.rate ?? 0.9,
+    pitch: options?.pitch ?? 1
   });
 };
 
-export const stop = () => Speech.stop();
+export const stopSpeech = () => Speech.stop();
