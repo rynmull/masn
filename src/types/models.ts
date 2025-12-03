@@ -10,43 +10,25 @@ export interface User {
 
 export interface ContextRef {
   id: UUID;
-  name: string; // e.g., Home, School
+  name: string; // e.g., "Home", "School", "Community"
   icon?: string;
   sortOrder?: number;
 }
 
 export interface AACProfile {
   id: UUID;
-  ownerUserId: UUID;
-  linkedUserIds: UUID[];
+  ownerUserId: UUID; // caregiver who manages this AAC profile
+  linkedUserIds: UUID[]; // caregivers/therapists with access
   displayName: string;
   ageRange?: 'early_childhood' | 'school_age' | 'teen' | 'adult';
-  primaryLanguage: string; // e.g., en
-  accessNeeds?: string;
+  primaryLanguage: string; // e.g., 'en'
+  accessNeeds?: string; // free-text notes
   contexts: ContextRef[];
   settings: {
-    gridPreset: '4x4' | '5x6' | '6x8' | 'custom';
-    gridConfig?: { rows: number; cols: number };
+    gridPreset?: '4x4' | '5x6' | '6x8' | 'custom';
     showTextWithSymbols: boolean;
-    voicePreference?: string;
+    voicePreference?: string; // TTS voice id
   };
-}
-
-export type TileType = 'word' | 'phrase' | 'categoryLink' | 'function';
-
-export interface Tile {
-  id: UUID;
-  boardId: UUID;
-  label: string;
-  spokenText: string;
-  type: TileType;
-  imageUri?: string;
-  symbolId?: string;
-  backgroundColor?: string;
-  position: { row: number; col: number };
-  isCore?: boolean;
-  isFavorite?: boolean;
-  targetBoardId?: UUID;
 }
 
 export interface Board {
@@ -61,11 +43,28 @@ export interface Board {
   sortOrder?: number;
 }
 
+export type TileType = 'word' | 'phrase' | 'categoryLink' | 'function';
+
+export interface Tile {
+  id: UUID;
+  boardId: UUID;
+  label: string; // visible text
+  spokenText: string; // what TTS says
+  type: TileType;
+  imageUri?: string; // symbol asset or photo URI
+  symbolId?: string; // reference into symbol set
+  backgroundColor?: string; // used for category/POS coloring
+  position: { row: number; col: number };
+  isCore?: boolean;
+  isFavorite?: boolean;
+  targetBoardId?: UUID; // for categoryLink tiles
+}
+
 export interface PhraseHistory {
   id: UUID;
   aacProfileId: UUID;
   phraseText: string;
   tokenTileIds: UUID[];
-  timestamp: string;
+  timestamp: string; // ISO string
   contextId?: UUID;
 }
