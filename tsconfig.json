@@ -13,7 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-native",
-    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "types": ["react-native", "react"],
     "baseUrl": ".",
     "paths": {
       "src/*": ["./src/*"]
