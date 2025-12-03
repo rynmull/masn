@@ -1,40 +1,30 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useAACStore } from '../store/aacStore';
-import { speak } from '../services/tts';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tile } from '../types/models';
-import { Pressable } from 'react-native';
 
 interface Props {
-  voicePreference?: string;
+  tiles: Tile[];
+  onSpeak: () => void;
+  onBackspace: () => void;
+  onClear: () => void;
 }
 
-export const MessageBar: React.FC<Props> = ({ voicePreference }) => {
-  const { selectedTiles, messageText, backspace, clear } = useAACStore();
-
-  const handleSpeak = () => {
-    speak(messageText(), voicePreference);
-  };
-
-  const handleBackspace = () => {
-    backspace();
-  };
-
+export const MessageBar: React.FC<Props> = ({ tiles, onSpeak, onBackspace, onClear }) => {
   return (
     <View style={styles.container}>
       <View style={styles.textContainer}>
         <Text style={styles.message} numberOfLines={2}>
-          {selectedTiles.map((tile: Tile) => tile.label).join(' ')}
+          {tiles.map((tile: Tile) => tile.label).join(' ')}
         </Text>
       </View>
       <View style={styles.actions}>
-        <Pressable style={[styles.button, styles.speak]} onPress={handleSpeak}>
+        <Pressable style={[styles.button, styles.speak]} onPress={onSpeak}>
           <Text style={styles.buttonText}>Speak</Text>
         </Pressable>
-        <Pressable style={styles.button} onPress={handleBackspace}>
+        <Pressable style={styles.button} onPress={onBackspace}>
           <Text style={styles.buttonText}>Backspace</Text>
         </Pressable>
-        <Pressable style={styles.button} onPress={clear}>
+        <Pressable style={styles.button} onPress={onClear}>
           <Text style={styles.buttonText}>Clear</Text>
         </Pressable>
       </View>
