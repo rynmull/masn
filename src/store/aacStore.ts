@@ -1,24 +1,35 @@
 import { create } from 'zustand';
-import { Tile } from '../types/models';
+import { DEMO_CORE_BOARD, DEMO_PROFILE } from '../data/demoCoreBoard';
+import { AACProfile, Board, Tile } from '../types/models';
 
 interface AACState {
-  selectedTiles: Tile[];
-  addToken: (tile: Tile) => void;
+  profile: AACProfile | null;
+  activeBoard: Board | null;
+  messageTiles: Tile[];
+
+  setProfile: (profile: AACProfile) => void;
+  setActiveBoard: (board: Board) => void;
+
+  addTileToMessage: (tile: Tile) => void;
   backspace: () => void;
-  clear: () => void;
-  messageText: () => string;
+  clearMessage: () => void;
 }
 
-export const useAACStore = create<AACState>((set, get) => ({
-  selectedTiles: [],
-  addToken: (tile) =>
+export const useAACStore = create<AACState>((set) => ({
+  profile: DEMO_PROFILE,
+  activeBoard: DEMO_CORE_BOARD,
+  messageTiles: [],
+
+  setProfile: (profile) => set({ profile }),
+  setActiveBoard: (board) => set({ activeBoard: board }),
+
+  addTileToMessage: (tile) =>
     set((state) => ({
-      selectedTiles: [...state.selectedTiles, tile]
+      messageTiles: [...state.messageTiles, tile]
     })),
   backspace: () =>
     set((state) => ({
-      selectedTiles: state.selectedTiles.slice(0, -1)
+      messageTiles: state.messageTiles.slice(0, -1)
     })),
-  clear: () => set({ selectedTiles: [] }),
-  messageText: () => get().selectedTiles.map((t) => t.spokenText).join(' ')
+  clearMessage: () => set({ messageTiles: [] })
 }));
