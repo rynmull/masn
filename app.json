@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "masn",
+    "slug": "masn",
+    "version": "0.1.0",
+    "orientation": "default",
+    "scheme": "masn",
+    "platforms": ["ios", "android", "web"],
+    "sdkVersion": "51.0.0",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.masn.app"
+    },
+    "android": {
+      "package": "com.masn.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
