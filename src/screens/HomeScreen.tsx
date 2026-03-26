@@ -139,7 +139,9 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
               key={idx}
               style={[styles.suggestionChip, { backgroundColor: '#333' }]}
               onPress={() => {
-                const vocab = currentVocab.find(v => v.label === word);
+                // Search across all categories for the word
+                const allWords = Object.values(vocabulary).flat();
+                const vocab = allWords.find(v => v.label === word);
                 if (vocab) handleButtonPress(vocab);
               }}
             >
