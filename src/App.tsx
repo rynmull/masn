@@ -50,7 +50,7 @@ const DEFAULT_WORDS = [
 export default function App() {
   const [mode, setMode] = useState<AppMode>('user');
   const [vocabulary, setVocabulary] = useState<Record<string, Array<{ label: string; speak: string; color: string }>>({});
-  const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9 });
+  const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: '' });
 
   // Load shared data (vocabulary & TTS settings) from database
   useEffect(() => {
@@ -112,13 +112,16 @@ export default function App() {
       });
     });
 
-    // Load TTS settings
+    // Load TTS settings (pitch, rate, voice)
     db.transaction(tx => {
       tx.executeSql("SELECT * FROM settings WHERE key='tts_pitch';", [], (_, { rows }) => {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, pitch: parseFloat(rows.item(0).value) }));
       });
       tx.executeSql("SELECT * FROM settings WHERE key='tts_rate';", [], (_, { rows }) => {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, rate: parseFloat(rows.item(0).value) }));
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='tts_voice';", [], (_, { rows }) => {
+        if (rows.length > 0) setTtsSettings(prev => ({ ...prev, voice: rows.item(0).value }));
       });
     });
   };

@@ -13,6 +13,7 @@ import {
 import * as Speech from 'expo-speech';
 import * as SQLite from 'expo-sqlite';
 import { openDatabase } from 'expo-sqlite';
+import { VoiceQuality } from 'expo-speech';
 
 const db = openDatabase('masn.db');
 
@@ -111,9 +112,11 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [showQuickCategory, setShowQuickCategory] = useState(false);
 
   // TTS Settings state
-  const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: 'default' });
-  const [emotionPreset, setEmotionPreset] = useState<'neutral' | 'happy' | 'calm' | 'urgent'>('neutral');
+  const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: '' });
+  const [emotionPreset, setEmotionPreset] = useState<'neutral' | 'happy' | 'calm' | 'urgent' | 'excited' | 'sad' | 'whisper' | 'stern'>('neutral');
   const [previewSpeech, setPreviewSpeech] = useState<string>('');
+  const [availableVoices, setAvailableVoices] = useState<Speech.Voice[]>([]);
+  const [loadingVoices, setLoadingVoices] = useState(true);
 
   // Statistics state
   const [stats, setStats] = useState({ totalWords: 0, totalUsage: 0, topWords: [] as {word: string, count: number}[] });
@@ -192,7 +195,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       });
     });
 
-    // Load TTS settings
+    // Load TTS settings (pitch, rate, voice)
     db.transaction(tx => {
       tx.executeSql("SELECT * FROM settings WHERE key='tts_pitch';", [], (_, { rows }) => {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, pitch: parseFloat(rows.item(0).value) }));
@@ -200,7 +203,23 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       tx.executeSql("SELECT * FROM settings WHERE key='tts_rate';", [], (_, { rows }) => {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, rate: parseFloat(rows.item(0).value) }));
       });
+      tx.executeSql("SELECT * FROM settings WHERE key='tts_voice';", [], (_, { rows }) => {
+        if (rows.length > 0) setTtsSettings(prev => ({ ...prev, voice: rows.item(0).value }));
+      });
     });
+
+    // Load available voices for selection
+    const loadVoices = async () => {
+      try {
+        const voices = await Speech.getAvailableVoicesAsync();
+        setAvailableVoices(voices);
+      } catch (err) {
+        console.log('Error loading voices:', err);
+      } finally {
+        setLoadingVoices(false);
+      }
+    };
+    loadVoices();
   };
 
   const loadStats = () => {
@@ -403,6 +422,9 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
     db.transaction(tx => {
       tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('tts_pitch', ?);", [ttsSettings.pitch.toString()]);
       tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('tts_rate', ?);", [ttsSettings.rate.toString()]);
+      if (ttsSettings.voice) {
+        tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('tts_voice', ?);", [ttsSettings.voice]);
+      }
     });
     Alert.alert('Settings Saved', 'TTS settings have been updated.');
   };
@@ -415,6 +437,14 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
         return { pitch: 0.95, rate: 0.85 };
       case 'urgent':
         return { pitch: 1.1, rate: 1.15 };
+      case 'excited':
+        return { pitch: 1.25, rate: 1.2 };
+      case 'sad':
+        return { pitch: 0.9, rate: 0.8 };
+      case 'whisper':
+        return { pitch: 0.95, rate: 0.75 };
+      case 'stern':
+        return { pitch: 1.05, rate: 0.95 };
       default:
         return { pitch: 1.0, rate: 0.9 };
     }
@@ -636,12 +666,16 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Emotion Presets</Text>
-              {(['neutral', 'happy', 'calm', 'urgent'] as const).map(emotion => {
+              {(['neutral', 'happy', 'calm', 'urgent', 'excited', 'sad', 'whisper', 'stern'] as const).map(emotion => {
                 const presets = {
                   neutral: { pitch: 1.0, rate: 0.9 },
                   happy: { pitch: 1.2, rate: 1.05 },
                   calm: { pitch: 0.95, rate: 0.85 },
                   urgent: { pitch: 1.1, rate: 1.15 },
+                  excited: { pitch: 1.25, rate: 1.2 },
+                  sad: { pitch: 0.9, rate: 0.8 },
+                  whisper: { pitch: 0.95, rate: 0.75 },
+                  stern: { pitch: 1.05, rate: 0.95 },
                 };
                 const isActive = emotionPreset === emotion;
                 return (
@@ -656,6 +690,54 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+
+            <View style={[styles.section, styles.voiceSection]}>
+              <Text style={styles.sectionTitle}>Voice Selection</Text>
+              {loadingVoices ? (
+                <Text style={styles.loadingVoices}>Loading available voices...</Text>
+              ) : availableVoices.length === 0 ? (
+                <Text style={styles.noVoices}>No additional voices available. Using default system voice.</Text>
+              ) : (
+                <>
+                  <ScrollView style={styles.voiceList} showsVerticalScrollIndicator={true}>
+                    {/* Default/Empty option */}
+                    <TouchableOpacity
+                      style={[styles.voiceListItem, (!ttsSettings.voice || ttsSettings.voice === '') && styles.voiceListItemSelected]}
+                      onPress={() => setTtsSettings(prev => ({ ...prev, voice: '' }))}
+                    >
+                      <View style={[styles.voiceRadio, (!ttsSettings.voice || ttsSettings.voice === '') && styles.voiceRadioSelected]}>
+                        {(!ttsSettings.voice || ttsSettings.voice === '') && <View style={styles.voiceRadioDot} />}
+                      </View>
+                      <View style={styles.voiceInfo}>
+                        <Text style={styles.voiceName}>Default System Voice</Text>
+                        <Text style={styles.voiceMeta}>Automatic voice selection</Text>
+                      </View>
+                    </TouchableOpacity>
+                    {/* Available voices */}
+                    {availableVoices.map(voice => (
+                      <TouchableOpacity
+                        key={voice.identifier}
+                        style={[styles.voiceListItem, ttsSettings.voice === voice.identifier && styles.voiceListItemSelected]}
+                        onPress={() => setTtsSettings(prev => ({ ...prev, voice: voice.identifier }))}
+                      >
+                        <View style={[styles.voiceRadio, ttsSettings.voice === voice.identifier && styles.voiceRadioSelected]}>
+                          {ttsSettings.voice === voice.identifier && <View style={styles.voiceRadioDot} />}
+                        </View>
+                        <View style={styles.voiceInfo}>
+                          <Text style={styles.voiceName}>{voice.name}</Text>
+                          <Text style={styles.voiceMeta}>
+                            {voice.language} • {voice.quality === VoiceQuality.Enhanced ? 'Enhanced' : 'Default'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  {ttsSettings.voice && (
+                    <Text style={styles.voiceMeta}>(Selected voice will be used for speech output)</Text>
+                  )}
+                </>
+              )}
             </View>
 
             <TouchableOpacity style={styles.saveButton} onPress={handleSaveSettings}>
@@ -1127,6 +1209,73 @@ const styles = StyleSheet.create({
   emotionText: {
     color: '#AAA',
     fontSize: 14,
+  },
+  voiceSection: {
+    marginTop: 8,
+  },
+  voiceLabel: {
+    color: '#CCC',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  voiceList: {
+    maxHeight: 200,
+    marginBottom: 12,
+  },
+  voiceListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  voiceListItemSelected: {
+    borderColor: '#6200EE',
+    backgroundColor: '#2A2A2A',
+  },
+  voiceRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#888',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceRadioSelected: {
+    borderColor: '#6200EE',
+  },
+  voiceRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#6200EE',
+  },
+  voiceInfo: {
+    flex: 1,
+  },
+  voiceName: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  voiceMeta: {
+    color: '#AAA',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  loadingVoices: {
+    color: '#AAA',
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  noVoices: {
+    color: '#F44336',
+    marginBottom: 12,
   },
   saveButton: {
     backgroundColor: '#4CAF50',

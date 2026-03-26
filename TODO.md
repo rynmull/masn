@@ -4,7 +4,7 @@
 - [x] **Caregiver Mode** (customization, vocabulary management, settings) ✅ Completed 2026-03-26
 - [x] **Adaptive Word Prediction** (SQLite usage-based suggestions by count & recency) ✅ Completed 2026-03-26
 - [x] **Vocabulary Expansion UI** (improved word add/edit with validation, quick category creation, missing category modal added) ✅ Completed 2026-03-26
-- [P3] Emotional Tone TTS (extend presets, add voice selection)
+- [x] **Emotional Tone TTS** (extended presets, voice selection) ✅ Completed 2026-03-26
 - [P4] Cloud Sync (encrypted optional backup)
 - [P5] Advanced Accessibility (switch control, eye tracking support)
 - [P6] Testing & Accessibility Audit
@@ -25,12 +25,19 @@
   - Queries top 4 words not already in phrase, ordered by usage_count DESC, last_used DESC
   - Suggestions refresh automatically on phrase changes
   - Offline-first, maintains performance with local SQLite
+- Emotional Tone TTS expanded:
+  - Added voice selection: caregiver can choose from available device voices (via `Speech.getAvailableVoicesAsync()`)
+  - Extended emotion presets from 4 to 8: neutral, happy, calm, urgent, excited, sad, whisper, stern
+  - Each preset applies appropriate pitch and rate values to convey emotion
+  - Voice setting persisted in SQLite settings table (tts_voice)
+  - HomeScreen speak function now applies selected voice
+  - Maintains offline-first architecture; voice selection uses on-device TTS voices
 
 **Implementation Notes**
 - All changes must maintain offline-first architecture
 - UI must meet WCAG AA contrast minimums (4.5:1)
 - SQLite schema: words(id, label, speak, color, category, usage_count, last_used), settings(key, value)
-- Next priority: Vocabulary Expansion UI (improve add/edit UX + category management)
+- Next priority: Cloud Sync (encrypted optional backup) or Advanced Accessibility based on user needs
 
 ** blockers**
 - None currently

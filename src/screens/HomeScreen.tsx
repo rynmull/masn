@@ -46,11 +46,15 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
   const [suggestedWords, setSuggestedWords] = useState<string[]>([]);
 
   const speak = useCallback((text: string) => {
-    Speech.speak(text, {
+    const options: Speech.SpeechOptions = {
       language: 'en-US',
       pitch: ttsSettings.pitch,
       rate: ttsSettings.rate,
-    });
+    };
+    if (ttsSettings.voice && ttsSettings.voice.trim() !== '') {
+      options.voice = ttsSettings.voice;
+    }
+    Speech.speak(text, options);
   }, [ttsSettings]);
 
   const handleButtonPress = (item: Word) => {
