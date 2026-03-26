@@ -98,11 +98,17 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [newWord, setNewWord] = useState({ label: '', speak: '', color: '#2196F3', category: 'Home' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'label' | 'usage' | 'category'>('label');
+  // Validation state
+  const [wordErrors, setWordErrors] = useState<{label?: string; speak?: string}>({});
 
   // Category management state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', color: '#2196F3' });
+  const [categoryErrors, setCategoryErrors] = useState<{name?: string}>({});
+  // Quick add category from word modal
+  const [quickCategoryInput, setQuickCategoryInput] = useState('');
+  const [showQuickCategory, setShowQuickCategory] = useState(false);
 
   // TTS Settings state
   const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: 'default' });
@@ -213,31 +219,83 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   };
 
   // Category Management
+  const validateCategory = (category: { name: string; color: string }) => {
+    const errors: {name?: string} = {};
+    if (!category.name.trim()) {
+      errors.name = 'Category name is required';
+    } else if (category.name.length > 30) {
+      errors.name = 'Name must be 30 characters or less';
+    } else if (!/^[A-Za-z0-9\s\-_]+$/.test(category.name)) {
+      errors.name = 'Name can only contain letters, numbers, spaces, hyphens, and underscores';
+    }
+    setCategoryErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSaveCategory = () => {
-    if (!newCategory.name.trim()) return;
+    if (!validateCategory(newCategory)) {
+      return;
+    }
+
+    const trimmedName = newCategory.name.trim();
+    // Check for duplicate category name (case-insensitive)
+    const exists = categories.some(c => c.name.toLowerCase() === trimmedName.toLowerCase());
+    if (exists && (!editingCategory || editingCategory.name.toLowerCase() !== trimmedName.toLowerCase())) {
+      setCategoryErrors({ name: 'A category with this name already exists' });
+      return;
+    }
 
     db.transaction(tx => {
       if (editingCategory) {
         tx.executeSql(
           `UPDATE categories SET name=?, color=? WHERE id=?;`,
-          [newCategory.name.trim(), newCategory.color, editingCategory.id]
+          [trimmedName, newCategory.color, editingCategory.id]
         );
         // Update category name in words table
         tx.executeSql(
           `UPDATE words SET category=? WHERE category=?;`,
-          [newCategory.name.trim(), editingCategory.name]
+          [trimmedName, editingCategory.name]
         );
       } else {
         tx.executeSql(
           `INSERT INTO categories (name, color) VALUES (?, ?);`,
-          [newCategory.name.trim(), newCategory.color]
+          [trimmedName, newCategory.color]
         );
       }
     });
     setShowCategoryModal(false);
     setEditingCategory(null);
     setNewCategory({ name: '', color: '#2196F3' });
+    setCategoryErrors({});
     loadData();
+  };
+
+  // Quick add category from word modal
+  const handleQuickAddCategory = () => {
+    if (!quickCategoryInput.trim()) return;
+    const trimmedName = quickCategoryInput.trim();
+    const exists = categories.some(c => c.name.toLowerCase() === trimmedName.toLowerCase());
+    if (exists) {
+      setNewWord(prev => ({ ...prev, category: trimmedName }));
+      setQuickCategoryInput('');
+      setShowQuickCategory(false);
+      return;
+    }
+    // Add new category with a default color
+    const defaultColors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#607D8B', '#F44336', '#3F51B5', '#795548', '#00BCD4', '#E91E63', '#FFEB3B', '#009688'];
+    const nextColor = defaultColors[categories.length % defaultColors.length];
+    db.transaction(tx => {
+      tx.executeSql(
+        `INSERT INTO categories (name, color) VALUES (?, ?);`,
+        [trimmedName, nextColor]
+      );
+    });
+    // Update local categories state and select the new category
+    const newCat = { name: trimmedName, color: nextColor };
+    setCategories(prev => [...prev, newCat]);
+    setNewWord(prev => ({ ...prev, category: trimmedName }));
+    setQuickCategoryInput('');
+    setShowQuickCategory(false);
   };
 
   const handleDeleteCategory = (id: number, name: string) => {
@@ -275,26 +333,55 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
     }
   };
 
-  const handleSaveWord = () => {
-    if (!editingWord && !newWord.label) return;
+  const validateWord = (word: { label: string; speak: string; color: string; category: string }) => {
+    const errors: {label?: string; speak?: string} = {};
+    if (!word.label.trim()) {
+      errors.label = 'Label is required';
+    } else if (word.label.length > 50) {
+      errors.label = 'Label must be 50 characters or less';
+    }
+    if (!word.speak.trim()) {
+      errors.speak = 'Speak text is required';
+    } else if (word.speak.length > 200) {
+      errors.speak = 'Speak text must be 200 characters or less';
+    }
+    setWordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
+  const handleSaveWord = () => {
     const wordData = editingWord || newWord;
+
+    if (!validateWord(wordData)) {
+      return; // Don't save if validation fails
+    }
+
+    // Check for duplicate label (case-insensitive) when adding new word
+    if (!editingWord) {
+      const exists = words.some(w => w.label.toLowerCase() === wordData.label.toLowerCase());
+      if (exists) {
+        setWordErrors({ label: 'A word with this label already exists' });
+        return;
+      }
+    }
+
     db.transaction(tx => {
       if (editingWord) {
         tx.executeSql(
           `UPDATE words SET label=?, speak=?, color=?, category=? WHERE id=?;`,
-          [wordData.label, wordData.speak, wordData.color, wordData.category, editingWord.id]
+          [wordData.label.trim(), wordData.speak.trim(), wordData.color, wordData.category, editingWord.id]
         );
       } else {
         tx.executeSql(
           `INSERT INTO words (label, speak, color, category, usage_count) VALUES (?, ?, ?, ?, 0);`,
-          [wordData.label, wordData.speak, wordData.color, wordData.category]
+          [wordData.label.trim(), wordData.speak.trim(), wordData.color, wordData.category]
         );
       }
     });
     setShowAddModal(false);
     setEditingWord(null);
     setNewWord({ label: '', speak: '', color: '#2196F3', category: 'Home' });
+    setWordErrors({});
     loadData();
   };
 
@@ -617,6 +704,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                 ? setEditingWord({ ...editingWord, label: text })
                 : setNewWord(prev => ({ ...prev, label: text }))}
             />
+            {wordErrors.label && <Text style={styles.errorText}>{wordErrors.label}</Text>}
             <TextInput
               style={styles.input}
               placeholder="Speak text (e.g., 'I want mom')"
@@ -625,6 +713,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                 ? setEditingWord({ ...editingWord, speak: text })
                 : setNewWord(prev => ({ ...prev, speak: text }))}
             />
+            {wordErrors.speak && <Text style={styles.errorText}>{wordErrors.speak}</Text>}
             <Text style={styles.inputLabel}>Color</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPicker}>
               {['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#607D8B', '#F44336', '#3F51B5', '#795548', '#00BCD4', '#E91E63', '#FFEB3B', '#009688'].map(color => (
@@ -650,13 +739,74 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                   <Text style={styles.categoryChipText}>{cat.name}</Text>
                 </TouchableOpacity>
               ))}
+              {!showQuickCategory ? (
+                <TouchableOpacity
+                  style={[styles.categoryChip, { backgroundColor: '#333', borderColor: '#666' }]}
+                  onPress={() => setShowQuickCategory(true)}
+                >
+                  <Text style={[styles.categoryChipText, { color: '#03DAC6' }]}>+ New</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.quickCategoryRow}>
+                  <TextInput
+                    style={styles.quickCategoryInput}
+                    placeholder="New category name"
+                    value={quickCategoryInput}
+                    onChangeText={setQuickCategoryInput}
+                    onSubmitEditing={handleQuickAddCategory}
+                    autoFocus
+                  />
+                  <TouchableOpacity style={styles.quickCategoryAdd} onPress={handleQuickAddCategory}>
+                    <Text style={styles.quickCategoryAddText}>Add</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickCategoryCancel} onPress={() => { setShowQuickCategory(false); setQuickCategoryInput(''); }}>
+                    <Text style={styles.quickCategoryCancelText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
+            {wordErrors.category && <Text style={styles.errorText}>{wordErrors.category}</Text>}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowAddModal(false); setEditingWord(null); }}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmButton} onPress={handleSaveWord}>
                 <Text style={styles.confirmButtonText}>{editingWord ? 'Save' : 'Add'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Category Modal */}
+      <Modal visible={showCategoryModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{editingCategory ? 'Edit Category' : 'Add New Category'}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Category name (e.g., 'Home')"
+              value={newCategory.name}
+              onChangeText={text => setNewCategory(prev => ({ ...prev, name: text }))}
+              autoFocus={!editingCategory}
+            />
+            {categoryErrors.name && <Text style={styles.errorText}>{categoryErrors.name}</Text>}
+            <Text style={styles.inputLabel}>Color</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPicker}>
+              {['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#607D8B', '#F44336', '#3F51B5', '#795548', '#00BCD4', '#E91E63', '#FFEB3B', '#009688'].map(color => (
+                <TouchableOpacity
+                  key={color}
+                  style={[styles.colorSwatch, { backgroundColor: color }, newCategory.color === color && styles.colorSwatchSelected]}
+                  onPress={() => setNewCategory(prev => ({ ...prev, color }))}
+                />
+              ))}
+            </ScrollView>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowCategoryModal(false); setEditingCategory(null); setNewCategory({ name: '', color: '#2196F3' }); }}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmButton} onPress={handleSaveCategory}>
+                <Text style={styles.confirmButtonText}>{editingCategory ? 'Save' : 'Add'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -784,6 +934,103 @@ const styles = StyleSheet.create({
     color: '#AAA',
     fontSize: 13,
   },
+
+  // Vocabulary tab controls
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    color: '#FFF',
+    padding: 10,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortLabel: {
+    color: '#AAA',
+    marginRight: 8,
+    fontSize: 14,
+  },
+  sortButton: {
+    backgroundColor: '#444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  sortButtonText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // Categories tab
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addCategoryButton: {
+    backgroundColor: '#03DAC6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  addCategoryButtonText: {
+    color: '#000',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1E1E',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  categoryColor: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  categoryInfo: {
+    flex: 1,
+  },
+  categoryName: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  categoryMeta: {
+    color: '#AAA',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  iconButton: {
+    padding: 6,
+    marginLeft: 8,
+  },
+  iconButtonText: {
+    fontSize: 18,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    color: '#777',
+    fontStyle: 'italic',
+  },
+
   addButton: {
     backgroundColor: '#03DAC6',
     paddingHorizontal: 16,
@@ -1005,6 +1252,52 @@ const styles = StyleSheet.create({
   categoryChipText: {
     color: '#AAA',
     fontSize: 13,
+  },
+  errorText: {
+    color: '#F44336',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  quickCategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  quickCategoryInput: {
+    backgroundColor: '#2A2A2A',
+    color: '#FFF',
+    padding: 8,
+    borderRadius: 6,
+    width: 150,
+    marginRight: 8,
+    fontSize: 14,
+  },
+  quickCategoryAdd: {
+    backgroundColor: '#03DAC6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  quickCategoryAddText: {
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  quickCategoryCancel: {
+    backgroundColor: '#444',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickCategoryCancelText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
   modalButtons: {
     flexDirection: 'row',

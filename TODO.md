@@ -3,7 +3,7 @@
 **Priority Order** (high → low)
 - [x] **Caregiver Mode** (customization, vocabulary management, settings) ✅ Completed 2026-03-26
 - [x] **Adaptive Word Prediction** (SQLite usage-based suggestions by count & recency) ✅ Completed 2026-03-26
-- [P2] Vocabulary Expansion UI (improve add/edit UX + category management)
+- [x] **Vocabulary Expansion UI** (improved word add/edit with validation, quick category creation, missing category modal added) ✅ Completed 2026-03-26
 - [P3] Emotional Tone TTS (extend presets, add voice selection)
 - [P4] Cloud Sync (encrypted optional backup)
 - [P5] Advanced Accessibility (switch control, eye tracking support)
