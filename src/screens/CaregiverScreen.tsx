@@ -87,7 +87,7 @@ const BUTTON_SIZE = Math.min(width * 0.18, height * 0.14);
 export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
-  const [activeTab, setActiveTab] = useState<'vocabulary' | 'settings' | 'stats'>('vocabulary');
+  const [activeTab, setActiveTab] = useState<'vocabulary' | 'settings' | 'stats' | 'categories'>('vocabulary');
 
   // Vocabulary management state
   const [words, setWords] = useState<Word[]>([]);
@@ -96,10 +96,18 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [editingWord, setEditingWord] = useState<Word | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newWord, setNewWord] = useState({ label: '', speak: '', color: '#2196F3', category: 'Home' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'label' | 'usage' | 'category'>('label');
+
+  // Category management state
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [newCategory, setNewCategory] = useState({ name: '', color: '#2196F3' });
 
   // TTS Settings state
   const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: 'default' });
   const [emotionPreset, setEmotionPreset] = useState<'neutral' | 'happy' | 'calm' | 'urgent'>('neutral');
+  const [previewSpeech, setPreviewSpeech] = useState<string>('');
 
   // Statistics state
   const [stats, setStats] = useState({ totalWords: 0, totalUsage: 0, topWords: [] as {word: string, count: number}[] });
@@ -202,6 +210,60 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
         setStats(prev => ({ ...prev, topWords: top }));
       });
     });
+  };
+
+  // Category Management
+  const handleSaveCategory = () => {
+    if (!newCategory.name.trim()) return;
+
+    db.transaction(tx => {
+      if (editingCategory) {
+        tx.executeSql(
+          `UPDATE categories SET name=?, color=? WHERE id=?;`,
+          [newCategory.name.trim(), newCategory.color, editingCategory.id]
+        );
+        // Update category name in words table
+        tx.executeSql(
+          `UPDATE words SET category=? WHERE category=?;`,
+          [newCategory.name.trim(), editingCategory.name]
+        );
+      } else {
+        tx.executeSql(
+          `INSERT INTO categories (name, color) VALUES (?, ?);`,
+          [newCategory.name.trim(), newCategory.color]
+        );
+      }
+    });
+    setShowCategoryModal(false);
+    setEditingCategory(null);
+    setNewCategory({ name: '', color: '#2196F3' });
+    loadData();
+  };
+
+  const handleDeleteCategory = (id: number, name: string) => {
+    // Check if category is in use
+    const wordCount = words.filter(w => w.category === name).length;
+    let message = `Delete category "${name}"?`;
+    if (wordCount > 0) {
+      message += `\n\n${wordCount} word(s) will be reassigned to "Home".`;
+    }
+
+    Alert.alert('Delete Category', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          db.transaction(tx => {
+            tx.executeSql('DELETE FROM categories WHERE id=?;', [id]);
+            if (wordCount > 0) {
+              tx.executeSql('UPDATE words SET category=? WHERE category=?;', ['Home', name]);
+            }
+          });
+          loadData();
+        },
+      },
+    ]);
   };
 
   const handleLogin = () => {
@@ -313,7 +375,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       </View>
 
       <View style={styles.tabs}>
-        {(['vocabulary', 'settings', 'stats'] as const).map(tab => (
+        {(['vocabulary', 'categories', 'settings', 'stats'] as const).map(tab => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -329,44 +391,135 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       <ScrollView contentContainerStyle={styles.content}>
         {activeTab === 'vocabulary' && (
           <>
+            {/* Search and sort controls */}
+            <View style={styles.controlsRow}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search words..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                clearButtonMode="while-editing"
+              />
+              <View style={styles.sortContainer}>
+                <Text style={styles.sortLabel}>Sort:</Text>
+                <TouchableOpacity style={styles.sortButton} onPress={() => setSortBy(sortBy === 'label' ? 'usage' : sortBy === 'usage' ? 'category' : 'label')}>
+                  <Text style={styles.sortButtonText}>
+                    {sortBy === 'label' ? 'A-Z' : sortBy === 'usage' ? 'Usage' : 'Category'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.categoryFilter}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <TouchableOpacity
                   style={[styles.filterChip, selectedCategory === 'All' && styles.filterChipActive]}
                   onPress={() => setSelectedCategory('All')}
                 >
-                  <Text style={styles.filterChipText}>All</Text>
+                  <Text style={styles.filterChipText}>All ({words.length})</Text>
                 </TouchableOpacity>
-                {categories.map(cat => (
-                  <TouchableOpacity
-                    key={cat.name}
-                    style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
-                    onPress={() => setSelectedCategory(cat.name)}
-                  >
-                    <Text style={styles.filterChipText}>{cat.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                {categories.map(cat => {
+                  const count = words.filter(w => w.category === cat.name).length;
+                  return (
+                    <TouchableOpacity
+                      key={cat.name}
+                      style={[styles.filterChip, selectedCategory === cat.name && styles.filterChipActive]}
+                      onPress={() => setSelectedCategory(cat.name)}
+                    >
+                      <Text style={styles.filterChipText}>{cat.name} ({count})</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  style={[styles.filterChip, { backgroundColor: '#333', borderColor: '#666' }]}
+                  onPress={() => { setEditingCategory(null); setNewCategory({ name: '', color: '#2196F3' }); setShowCategoryModal(true); }}
+                >
+                  <Text style={[styles.filterChipText, { color: '#03DAC6' }]}>+ New Category</Text>
+                </TouchableOpacity>
               </ScrollView>
               <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
                 <Text style={styles.addButtonText}>+ Add Word</Text>
               </TouchableOpacity>
             </View>
 
-            {filteredWords.map(word => (
-              <View key={word.id} style={styles.wordRow}>
-                <View style={[styles.wordColor, { backgroundColor: word.color }]} />
-                <View style={styles.wordInfo}>
-                  <Text style={styles.wordLabel}>{word.label}</Text>
-                  <Text style={styles.wordMeta}>{word.category} • Used {word.usage_count} times</Text>
+            {/* Filtered and sorted words */}
+            {(() => {
+              let filtered = words.filter(w =>
+                w.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                w.speak.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              if (selectedCategory !== 'All') {
+                filtered = filtered.filter(w => w.category === selectedCategory);
+              }
+              // Sort
+              filtered.sort((a, b) => {
+                if (sortBy === 'label') return a.label.localeCompare(b.label);
+                if (sortBy === 'usage') return b.usage_count - a.usage_count;
+                return a.category.localeCompare(b.category);
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No words found.</Text>
+                  </View>
+                );
+              }
+
+              return filtered.map(word => (
+                <View key={word.id} style={styles.wordRow}>
+                  <View style={[styles.wordColor, { backgroundColor: word.color }]} />
+                  <View style={styles.wordInfo}>
+                    <Text style={styles.wordLabel}>{word.label}</Text>
+                    <Text style={styles.wordMeta}>{word.category} • Used {word.usage_count} times</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setEditingWord(word)}>
+                    <Text style={styles.editLink}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => word.id && handleDeleteWord(word.id)}>
+                    <Text style={styles.deleteLink}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setEditingWord(word)}>
-                  <Text style={styles.editLink}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => word.id && handleDeleteWord(word.id)}>
-                  <Text style={styles.deleteLink}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+              ));
+            })()}
+          </>
+        )}
+
+        {activeTab === 'categories' && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Category Management</Text>
+              <TouchableOpacity
+                style={styles.addCategoryButton}
+                onPress={() => { setEditingCategory(null); setNewCategory({ name: '', color: '#2196F3' }); setShowCategoryModal(true); }}
+              >
+                <Text style={styles.addCategoryButtonText}>+ New Category</Text>
+              </TouchableOpacity>
+            </View>
+            {categories.map(cat => {
+              const wordCount = words.filter(w => w.category === cat.name).length;
+              return (
+                <View key={cat.id} style={styles.categoryRow}>
+                  <View style={[styles.categoryColor, { backgroundColor: cat.color }]} />
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryName}>{cat.name}</Text>
+                    <Text style={styles.categoryMeta}>{wordCount} word(s)</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => { setEditingCategory(cat); setNewCategory({ name: cat.name, color: cat.color }); setShowCategoryModal(true); }}
+                  >
+                    <Text style={styles.iconButtonText}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => cat.id && handleDeleteCategory(cat.id, cat.name)}
+                  >
+                    <Text style={styles.iconButtonText}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </>
         )}
 
