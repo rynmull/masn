@@ -13,7 +13,11 @@ import {
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as SQLite from 'expo-sqlite';
+import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system';
+import * as DocumentPicker from 'expo-document-picker';
 import { openDatabase } from 'expo-sqlite';
+import SyncService from '../services/SyncService';
 import { VoiceQuality } from 'expo-speech';
 
 const db = openDatabase('masn.db');
@@ -122,10 +126,17 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   // Statistics state
   const [stats, setStats] = useState({ totalWords: 0, totalUsage: 0, topWords: [] as {word: string, count: number}[] });
 
+  // Cloud Sync state
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'backing-up' | 'restoring' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // Load data from DB
   useEffect(() => {
     initializeDB();
     loadData();
+    loadSyncStatus();
   }, []);
 
   const initializeDB = () => {
@@ -236,6 +247,17 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
         setStats(prev => ({ ...prev, topWords: top }));
       });
     });
+  };
+
+  const loadSyncStatus = async () => {
+    try {
+      const enabled = await SyncService.isEnabled();
+      setCloudSyncEnabled(enabled);
+      const last = await SyncService.getLastBackupTime();
+      setLastBackupTime(last);
+    } catch (e) {
+      console.error('Failed to load sync status', e);
+    }
   };
 
   // Category Management
@@ -736,6 +758,92 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                   </ScrollView>
                   {ttsSettings.voice && (
                     <Text style={styles.voiceMeta}>(Selected voice will be used for speech output)</Text>
+                  )}
+                </>
+              )}
+            </View>
+
+            {/* Cloud Sync Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Cloud Sync (Encrypted Backup)</Text>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Enable Cloud Sync</Text>
+                <Switch
+                  value={cloudSyncEnabled}
+                  onValueChange={async (value) => {
+                    await SyncService.setEnabled(value);
+                    setCloudSyncEnabled(value);
+                  }}
+                />
+              </View>
+              {cloudSyncEnabled && (
+                <>
+                  <View style={styles.settingRow}>
+                    <Text style={styles.settingLabel}>Last Backup</Text>
+                    <Text style={styles.settingValue}>
+                      {lastBackupTime ? new Date(lastBackupTime).toLocaleString() : 'Never'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.actionButton, syncStatus === 'backing-up' && styles.actionButtonDisabled]}
+                    onPress={async () => {
+                      setSyncStatus('backing-up');
+                      setSyncError(null);
+                      const result = await SyncService.backup();
+                      if (result.success) {
+                        setLastBackupTime(new Date().toISOString());
+                        Alert.alert('Backup Complete', 'Your data has been backed up securely.');
+                      } else {
+                        setSyncError(result.error || 'Backup failed');
+                        Alert.alert('Backup Failed', result.error || 'Unknown error');
+                      }
+                      setSyncStatus('idle');
+                    }}
+                    disabled={syncStatus === 'backing-up' || syncStatus === 'restoring'}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {syncStatus === 'backing-up' ? 'Backing up...' : 'Backup Now'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.restoreButton, (syncStatus === 'restoring' || syncStatus === 'backing-up') && styles.actionButtonDisabled]}
+                    onPress={async () => {
+                      try {
+                        setSyncStatus('restoring');
+                        setSyncError(null);
+                        const result = await DocumentPicker.getDocumentAsync({
+                          type: 'application/octet-stream',
+                          copyToCacheDirectory: true,
+                        });
+                        if (result.canceled) {
+                          setSyncStatus('idle');
+                          return;
+                        }
+                        const uri = result.assets[0].uri;
+                        const restoreResult = await SyncService.restore(uri);
+                        if (restoreResult.success) {
+                          Alert.alert('Restore Complete', 'Your data has been restored. Restart the app to see changes.');
+                          loadData();
+                          loadSyncStatus();
+                        } else {
+                          setSyncError(restoreResult.error || 'Restore failed');
+                          Alert.alert('Restore Failed', restoreResult.error || 'Unknown error');
+                        }
+                      } catch (err: any) {
+                        setSyncError(err.message);
+                        Alert.alert('Error', err.message);
+                      } finally {
+                        setSyncStatus('idle');
+                      }
+                    }}
+                    disabled={syncStatus === 'backing-up' || syncStatus === 'restoring'}
+                  >
+                    <Text style={[styles.actionButtonText, styles.restoreButtonText]}>
+                      {syncStatus === 'restoring' ? 'Restoring...' : 'Restore from Backup'}
+                    </Text>
+                  </TouchableOpacity>
+                  {syncError && (
+                    <Text style={styles.errorText}>{syncError}</Text>
                   )}
                 </>
               )}
@@ -1470,6 +1578,29 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Cloud Sync styles
+  settingValue: {
+    color: '#AAA',
+    fontSize: 16,
+  },
+  actionButton: {
+    backgroundColor: '#6200EE',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+  restoreButton: {
+    backgroundColor: '#03DAC6',
+  },
+  restoreButtonText: {
+    color: '#000',
     fontWeight: '600',
   },
 });
