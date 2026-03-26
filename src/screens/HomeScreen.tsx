@@ -43,7 +43,7 @@ const BUTTON_SIZE = Math.min(width * 0.22, height * 0.18);
 export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange }: HomeScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
   const [phrase, setPhrase] = useState<string[]>([]);
-  const [recentWords, setRecentWords] = useState<string[]>([]);
+  const [suggestedWords, setSuggestedWords] = useState<string[]>([]);
 
   const speak = useCallback((text: string) => {
     Speech.speak(text, {
@@ -68,12 +68,6 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
         [item.label, item.speak, item.color, selectedCategory]
       );
     });
-
-    // Update recent words locally
-    setRecentWords(prev => {
-      const filtered = prev.filter(w => w !== item.label);
-      return [item.label, ...filtered].slice(0, 10);
-    });
   };
 
   const clearPhrase = () => setPhrase([]);
@@ -85,9 +79,40 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
     }
   };
 
-  const getSuggestedWords = () => {
-    return recentWords.filter(w => !phrase.includes(w)).slice(0, 4);
-  };
+  // Fetch word suggestions based on usage and recency
+  const fetchSuggestedWords = useCallback(() => {
+    if (phrase.length === 0) {
+      setSuggestedWords([]);
+      return;
+    }
+    db.transaction(tx => {
+      const placeholders = phrase.map(() => '?').join(',');
+      const sql = `
+        SELECT label FROM words
+        WHERE label NOT IN (${placeholders})
+        ORDER BY usage_count DESC, last_used DESC
+        LIMIT 4;
+      `;
+      tx.executeSql(
+        sql,
+        phrase,
+        (_, { rows }) => {
+          const labels = rows._array.map((row: any) => row.label);
+          setSuggestedWords(labels);
+        },
+        (_, error) => {
+          console.log('Error fetching suggestions:', error);
+          setSuggestedWords([]);
+          return false;
+        }
+      );
+    });
+  }, [phrase]);
+
+  // Update suggestions whenever phrase changes
+  useEffect(() => {
+    fetchSuggestedWords();
+  }, [phrase, fetchSuggestedWords]);
 
   const currentVocab = vocabulary[selectedCategory] || [];
 
@@ -106,10 +131,10 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
       </View>
 
       {/* Suggested next words */}
-      {phrase.length > 0 && (
+      {phrase.length > 0 && suggestedWords.length > 0 && (
         <View style={styles.suggestionsRow}>
           <Text style={styles.suggestionsLabel}>Try:</Text>
-          {getSuggestedWords().map((word, idx) => (
+          {suggestedWords.map((word, idx) => (
             <TouchableOpacity
               key={idx}
               style={[styles.suggestionChip, { backgroundColor: '#333' }]}
