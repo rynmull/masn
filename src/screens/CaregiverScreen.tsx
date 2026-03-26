@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   Switch,
+  Dimensions,
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as SQLite from 'expo-sqlite';

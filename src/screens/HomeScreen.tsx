@@ -29,6 +29,7 @@ interface Vocabulary {
 interface TtsSettings {
   pitch: number;
   rate: number;
+  voice?: string;
 }
 
 interface HomeScreenProps {
