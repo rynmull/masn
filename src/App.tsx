@@ -48,9 +48,16 @@ const DEFAULT_WORDS = [
   { label: 'Help', speak: 'Please help', color: '#9C27B0', category: 'Actions' },
 ];
 
+interface WordItem {
+  label: string;
+  speak: string;
+  color: string;
+}
+type Vocabulary = Record<string, WordItem[]>;
+
 export default function App() {
   const [mode, setMode] = useState<AppMode>('user');
-  const [vocabulary, setVocabulary] = useState<Record<string, Array<{ label: string; speak: string; color: string }>>({});
+  const [vocabulary, setVocabulary] = useState<Vocabulary>({});
   const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: '' });
 
   // Load shared data (vocabulary & TTS settings) from database

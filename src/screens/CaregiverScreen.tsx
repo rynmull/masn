@@ -105,7 +105,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'label' | 'usage' | 'category'>('label');
   // Validation state
-  const [wordErrors, setWordErrors] = useState<{label?: string; speak?: string}>({});
+  const [wordErrors, setWordErrors] = useState<{label?: string; speak?: string; category?: string}>({});
 
   // Category management state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -183,7 +183,10 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
           });
           setCategories(DEFAULT_CATEGORIES);
         } else {
-          const cats = rows._array;
+          const cats = [];
+          for (let i = 0; i < rows.length; i++) {
+            cats.push(rows.item(i));
+          }
           setCategories(cats);
         }
       });
@@ -202,7 +205,11 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
           });
           setWords(DEFAULT_WORDS);
         } else {
-          setWords(rows._array);
+          const words = [];
+          for (let i = 0; i < rows.length; i++) {
+            words.push(rows.item(i));
+          }
+          setWords(words);
         }
       });
     });
@@ -236,14 +243,21 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
 
   const loadStats = () => {
     db.transaction(tx => {
-      tx.executeSql('SELECT COUNT(*) as total FROM words;', [], (_, { countRow }) => {
-        setStats(prev => ({ ...prev, totalWords: countRow.item(0).total }));
+      tx.executeSql('SELECT COUNT(*) as total FROM words;', [], (_, result) => {
+        const totalWords = result.rows.item(0).total;
+        setStats(prev => ({ ...prev, totalWords }));
       });
-      tx.executeSql('SELECT SUM(usage_count) as total FROM words;', [], (_, { sumRow }) => {
-        setStats(prev => ({ ...prev, totalUsage: sumRow.item(0).total || 0 }));
+      tx.executeSql('SELECT SUM(usage_count) as total FROM words;', [], (_, result) => {
+        const totalUsage = result.rows.item(0).total || 0;
+        setStats(prev => ({ ...prev, totalUsage }));
       });
-      tx.executeSql('SELECT label, usage_count FROM words ORDER BY usage_count DESC LIMIT 10;', [], (_, { rows }) => {
-        const top = rows._array.map((r: any) => ({ word: r.label, count: r.usage_count }));
+      tx.executeSql('SELECT label, usage_count FROM words ORDER BY usage_count DESC LIMIT 10;', [], (_, result) => {
+        const length = result.rows.length;
+        const top: Array<{ word: string; count: number }> = [];
+        for (let i = 0; i < length; i++) {
+          const row = result.rows.item(i);
+          top.push({ word: row.label, count: row.usage_count });
+        }
         setStats(prev => ({ ...prev, topWords: top }));
       });
     });
@@ -291,7 +305,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       if (editingCategory) {
         tx.executeSql(
           `UPDATE categories SET name=?, color=? WHERE id=?;`,
-          [trimmedName, newCategory.color, editingCategory.id]
+          [trimmedName, newCategory.color, editingCategory.id!]
         );
         // Update category name in words table
         tx.executeSql(
@@ -411,7 +425,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       if (editingWord) {
         tx.executeSql(
           `UPDATE words SET label=?, speak=?, color=?, category=? WHERE id=?;`,
-          [wordData.label.trim(), wordData.speak.trim(), wordData.color, wordData.category, editingWord.id]
+          [wordData.label.trim(), wordData.speak.trim(), wordData.color, wordData.category, editingWord.id!]
         );
       } else {
         tx.executeSql(
@@ -1595,6 +1609,11 @@ const styles = StyleSheet.create({
   },
   actionButtonDisabled: {
     opacity: 0.5,
+  },
+  actionButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
   restoreButton: {
     backgroundColor: '#03DAC6',
