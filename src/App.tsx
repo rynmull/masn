@@ -3,6 +3,7 @@ import { SafeAreaView, StyleSheet, StatusBar, TouchableOpacity, Text, View } fro
 import * as SQLite from 'expo-sqlite';
 import { openDatabase } from 'expo-sqlite';
 import SyncService from './services/SyncService';
+import { registerBackgroundSync } from './services/BackgroundSyncService';
 import HomeScreen from './screens/HomeScreen';
 import CaregiverScreen from './screens/CaregiverScreen';
 
@@ -63,8 +64,10 @@ export default function App() {
   // Load shared data (vocabulary & TTS settings) from database
   useEffect(() => {
     initializeDB();
-    SyncService.initialize().then(() => {
+    SyncService.initialize().then(async () => {
       console.log('SyncService initialized');
+      // Register background sync task
+      await registerBackgroundSync();
     });
     loadSharedData();
   }, []);

@@ -5,7 +5,7 @@
 - [x] **Adaptive Word Prediction** (SQLite usage-based suggestions by count & recency) ✅ Completed 2026-03-26
 - [x] **Vocabulary Expansion UI** (improved word add/edit with validation, quick category creation, missing category modal added) ✅ Completed 2026-03-26
 - [x] **Emotional Tone TTS** (extended presets, voice selection) ✅ Completed 2026-03-26
-- [P4] Cloud Sync (encrypted optional backup) – In Progress (Phase 1+2 done)
+- [x] **Cloud Sync (encrypted optional backup)** ✅ Completed 2026-03-26 (Phase 1+2+3)
 - [P5] Advanced Accessibility (switch control, eye tracking support)
 - [P6] Testing & Accessibility Audit
 - [P7] Documentation & Deployment Guides
@@ -32,13 +32,13 @@
   - Voice setting persisted in SQLite settings table (tts_voice)
   - HomeScreen speak function now applies selected voice
   - Maintains offline-first architecture; voice selection uses on-device TTS voices
-- **Cloud Sync (Phase 1+2)**:
+- **Cloud Sync (Phase 1+2+3)**:
   - `SyncService` with AES-CBC encryption using randomly generated key stored in SecureStore
   - Backup: exports all words, categories, and non-sensitive settings to encrypted file in app document directory
   - Restore: pick encrypted backup file via DocumentPicker and restore with merge (preserving existing PIN and sync config)
   - Caregiver Settings UI: toggle enable sync, manual backup, restore, last backup timestamp display
   - Added dependencies: `crypto-js` for AES, `expo-document-picker` for file selection
-  - Note: Automatic background sync scheduling pending (Phase 3)
+  - **Phase 3**: Automatic background sync scheduling. Implemented `BackgroundSyncService` using `expo-background-fetch` and `expo-task-manager`. Registers a daily background task that triggers an encrypted backup when cloud sync is enabled and the last backup is older than 24 hours. Task persists after app close and device reboot. Fully offline-first; no network required for backup.
 
 **Implementation Notes**
 - All changes must maintain offline-first architecture
