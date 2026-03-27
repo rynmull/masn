@@ -1,30 +1,20 @@
-# Masn – Modern AAC Communication Platform
+# Masn AAC Platform
 
-**Masn** is an AI-assisted Augmentative and Alternative Communication (AAC) app designed for nonverbal and minimally verbal users. It goes beyond traditional picture boards by combining adaptive learning, expressive TTS, and offline-first reliability.
+An AI-assisted Augmentative and Alternative Communication (AAC) platform focused on natural expression and accessibility.
 
-## Features (Planned)
-- Offline AAC boards with symbol and word-based communication
-- High-contrast, large-hit-area UI for accessibility
-- On-device text-to-speech with multiple voice options
-- Adaptive word prediction that learns the user's patterns
-- Emotional tone selection for more natural speech
-- Caregiver mode for customization and sync
-- End-to-end encrypted cloud sync (optional)
+## Core Features
 
-## Tech Stack
-- **Frontend**: React Native + Expo (TypeScript)
-- **Storage**: SQLite (offline-first)
-- **Voice**: Expo Speech (on-device TTS)
-- **Sync**: Encrypted optional cloud (future)
-- **ML**: Local word prediction (future)
+- 🗣️ Natural AI voice with emotional tone control
+- 📱 Offline-first architecture
+- 🎯 Adaptive learning & word prediction
+- 👥 Comprehensive caregiver support
+- ♿ Advanced accessibility options
+- 🔄 Optional encrypted cloud sync
 
 ## Getting Started
-1. Install dependencies: `npm install`
-2. Start Expo: `npm start`
-3. Scan QR with Expo Go on your device
 
-## Project Status
-Early prototype – basic AAC board functional (categories, buttons, speech). Word prediction and caregiver mode in progress.
+See our [Documentation](./docs/) for detailed guides on installation, usage, and development.
 
 ## License
-Proprietary – All rights reserved.
+
+Copyright © 2026 4M Designs. All rights reserved.
