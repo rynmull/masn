@@ -24,8 +24,8 @@ export const spacing = {
   lg: 24,
   xl: 32,
   // Increased grid spacing
-  gridGap: 12, // Was 8
-  buttonPadding: 16 // Was 12
+  gridGap: 16, // Was 12
+  buttonPadding: 20 // Was 16
 };
 
 export const typography = {
@@ -62,7 +62,7 @@ export const accessibilityStyles = StyleSheet.create({
 
 // Grid layout constants
 export const grid = {
-  minCellSize: 80, // Increased from 70
+  minCellSize: 88, // Increased from 80
   spacing: spacing.gridGap,
   containerPadding: spacing.md
 };
