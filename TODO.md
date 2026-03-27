@@ -22,9 +22,9 @@
 Technical specification completed: `/docs/specs/eye-tracking.md`
 
 ### Phase 1: Foundation (2 weeks)
-- [ ] WebGazer.js integration
-- [ ] EyeTrackingManager implementation
-- [ ] Calibration UI prototype
+- [🔄] WebGazer.js integration (in progress)
+- [🔄] EyeTrackingManager implementation (in progress)
+- [🔄] Calibration UI prototype (in progress)
 - [ ] Basic gaze visualization
 
 ### Phase 2: Core Features (3 weeks)
