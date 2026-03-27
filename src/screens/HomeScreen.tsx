@@ -32,19 +32,31 @@ interface TtsSettings {
   voice?: string;
 }
 
+interface AccessibilitySettings {
+  enabled: boolean;
+  scanSpeed: number; // milliseconds per item
+  auditory: boolean;
+  highlightColor: string;
+}
+
 interface HomeScreenProps {
   vocabulary: Vocabulary;
   ttsSettings: TtsSettings;
   onVocabularyChange: () => void;
+  accessibilitySettings?: AccessibilitySettings;
 }
 
 const { width, height } = Dimensions.get('window');
 const BUTTON_SIZE = Math.min(width * 0.22, height * 0.18);
 
-export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange }: HomeScreenProps) {
+export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange, accessibilitySettings }: HomeScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
   const [phrase, setPhrase] = useState<string[]>([]);
   const [suggestedWords, setSuggestedWords] = useState<string[]>([]);
+
+  // Scanning state
+  const [scanIndex, setScanIndex] = useState(0);
+  const [scanTimer, setScanTimer] = useState<ReturnType<typeof setInterval> | null>(null);
 
   const speak = useCallback((text: string) => {
     const options: Speech.SpeechOptions = {
@@ -57,6 +69,42 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
     }
     Speech.speak(text, options);
   }, [ttsSettings]);
+
+  // Handle grid tap when scanning is enabled
+  const handleGridTap = useCallback(() => {
+    if (!accessibilitySettings?.enabled || currentVocab.length === 0) return;
+    const selectedWord = currentVocab[scanIndex];
+    if (selectedWord) {
+      // Simulate button press: speak and update usage
+      speak(selectedWord.speak);
+      setPhrase(prev => [...prev, selectedWord.label]);
+      db.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO words (label, speak, color, category, usage_count) VALUES (?, ?, ?, ?, 1)
+           ON CONFLICT(label) DO UPDATE SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP;`,
+          [selectedWord.label, selectedWord.speak, selectedWord.color, selectedCategory]
+        );
+      });
+    }
+  }, [accessibilitySettings?.enabled, currentVocab, scanIndex, speak, selectedCategory]);
+
+  // Handle grid tap when scanning is enabled
+  const handleGridTap = useCallback(() => {
+    if (!accessibilitySettings?.enabled || currentVocab.length === 0) return;
+    const selectedWord = currentVocab[scanIndex];
+    if (selectedWord) {
+      // Simulate button press: speak and update usage
+      speak(selectedWord.speak);
+      setPhrase(prev => [...prev, selectedWord.label]);
+      db.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO words (label, speak, color, category, usage_count) VALUES (?, ?, ?, ?, 1)
+           ON CONFLICT(label) DO UPDATE SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP;`,
+          [selectedWord.label, selectedWord.speak, selectedWord.color, selectedCategory]
+        );
+      });
+    }
+  }, [accessibilitySettings?.enabled, currentVocab, scanIndex, speak, selectedCategory]);
 
   const handleButtonPress = (item: Word) => {
     // Speak immediately
@@ -119,6 +167,39 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
     fetchSuggestedWords();
   }, [phrase, fetchSuggestedWords]);
 
+  // Reset scan index when category or vocabulary changes
+  useEffect(() => {
+    setScanIndex(0);
+  }, [selectedCategory, currentVocab]);
+
+  // Scanning logic
+  useEffect(() => {
+    if (accessibilitySettings?.enabled && currentVocab.length > 0) {
+      const timer = setInterval(() => {
+        setScanIndex(prev => {
+          const next = (prev + 1) % currentVocab.length;
+          if (accessibilitySettings.auditory && currentVocab[next]) {
+            Speech.stop();
+            Speech.speak(currentVocab[next].label, { rate: 1.2, pitch: 1.1 });
+          }
+          return next;
+        });
+      }, accessibilitySettings.scanSpeed);
+      setScanTimer(timer);
+
+      return () => {
+        clearInterval(timer);
+        setScanTimer(null);
+      };
+    } else {
+      if (scanTimer) {
+        clearInterval(scanTimer);
+        setScanTimer(null);
+      }
+      setScanIndex(0);
+    }
+  }, [accessibilitySettings?.enabled, accessibilitySettings?.scanSpeed, accessibilitySettings?.auditory, currentVocab]);
+
   const currentVocab = vocabulary[selectedCategory] || [];
 
   return (
@@ -179,24 +260,43 @@ export default function HomeScreen({ vocabulary, ttsSettings, onVocabularyChange
 
       {/* Button grid */}
       <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
-        {currentVocab.map((item, idx) => (
-          <TouchableOpacity
-            key={`${item.label}-${idx}`}
-            style={[styles.button, { backgroundColor: item.color }]}
-            onPress={() => handleButtonPress(item)}
-            accessibilityLabel={item.label}
-            accessibilityRole="button"
-            accessibilityHint={`Speak ${item.speak}`}
-          >
-            <Text style={styles.buttonText}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {currentVocab.map((item, idx) => {
+          const isHighlighted = accessibilitySettings?.enabled && scanIndex === idx;
+          return (
+            <TouchableOpacity
+              key={`${item.label}-${idx}`}
+              style={[
+                styles.button,
+                { backgroundColor: item.color },
+                isHighlighted && {
+                  borderWidth: 4,
+                  borderColor: accessibilitySettings?.highlightColor || '#FFEB3B',
+                  transform: [{ scale: 1.05 }],
+                }
+              ]}
+              onPress={accessibilitySettings?.enabled ? undefined : () => handleButtonPress(item)}
+              accessibilityLabel={item.label}
+              accessibilityRole="button"
+              accessibilityHint={`Speak ${item.speak}`}
+              pointerEvents={accessibilitySettings?.enabled ? 'none' : 'auto'}
+            >
+              <Text style={styles.buttonText}>{item.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Speak phrase button */}
       <TouchableOpacity style={styles.speakButton} onPress={speakPhrase}>
         <Text style={styles.speakButtonText}>🔊 Speak Phrase</Text>
       </TouchableOpacity>
+
+      {/* Scanning SELECT button */}
+      {accessibilitySettings?.enabled && (
+        <TouchableOpacity style={[styles.scanSelectButton, { borderColor: accessibilitySettings.highlightColor }]} onPress={handleGridTap}>
+          <Text style={styles.scanSelectButtonText}>SELECT</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -322,6 +422,26 @@ const styles = StyleSheet.create({
   },
   speakButtonText: {
     color: '#000',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  scanSelectButton: {
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    backgroundColor: 'transparent',
+    borderWidth: 3,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scanSelectButtonText: {
+    color: '#FFF',
     fontWeight: 'bold',
     fontSize: 16,
   },

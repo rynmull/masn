@@ -7,6 +7,13 @@ import { registerBackgroundSync } from './services/BackgroundSyncService';
 import HomeScreen from './screens/HomeScreen';
 import CaregiverScreen from './screens/CaregiverScreen';
 
+interface AccessibilitySettings {
+  enabled: boolean;
+  scanSpeed: number;
+  auditory: boolean;
+  highlightColor: string;
+}
+
 const db = openDatabase('masn.db');
 
 type AppMode = 'user' | 'caregiver';
@@ -60,6 +67,12 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>('user');
   const [vocabulary, setVocabulary] = useState<Vocabulary>({});
   const [ttsSettings, setTtsSettings] = useState({ pitch: 1.0, rate: 0.9, voice: '' });
+  const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>({
+    enabled: false,
+    scanSpeed: 500,
+    auditory: true,
+    highlightColor: '#FFEB3B',
+  });
 
   // Load shared data (vocabulary & TTS settings) from database
   useEffect(() => {
@@ -138,6 +151,22 @@ export default function App() {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, voice: rows.item(0).value }));
       });
     });
+
+    // Load Accessibility settings
+    db.transaction(tx => {
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_enabled';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, enabled: rows.item(0).value === 'true' }));
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_scan_speed';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, scanSpeed: parseInt(rows.item(0).value, 10) || 500 }));
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_auditory';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, auditory: rows.item(0).value === 'true' }));
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_highlight_color';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, highlightColor: rows.item(0).value }));
+      });
+    });
   };
 
   const refreshVocabulary = useCallback(() => {
@@ -162,7 +191,7 @@ export default function App() {
           <Text style={styles.caregiverLink}>Caregiver</Text>
         </TouchableOpacity>
       </View>
-      <HomeScreen vocabulary={vocabulary} ttsSettings={ttsSettings} onVocabularyChange={refreshVocabulary} />
+      <HomeScreen vocabulary={vocabulary} ttsSettings={ttsSettings} onVocabularyChange={refreshVocabulary} accessibilitySettings={accessibilitySettings} />
     </SafeAreaView>
   );
 }

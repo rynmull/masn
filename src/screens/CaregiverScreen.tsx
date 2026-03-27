@@ -132,6 +132,12 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'backing-up' | 'restoring' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Accessibility settings state
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
+  const [scanSpeed, setScanSpeed] = useState<number>(500);
+  const [auditoryFeedback, setAuditoryFeedback] = useState(true);
+  const [highlightColor, setHighlightColor] = useState('#FFEB3B');
+
   // Load data from DB
   useEffect(() => {
     initializeDB();
@@ -224,6 +230,22 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       });
       tx.executeSql("SELECT * FROM settings WHERE key='tts_voice';", [], (_, { rows }) => {
         if (rows.length > 0) setTtsSettings(prev => ({ ...prev, voice: rows.item(0).value }));
+      });
+    });
+
+    // Load Accessibility settings
+    db.transaction(tx => {
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_enabled';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilityEnabled(rows.item(0).value === 'true');
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_scan_speed';", [], (_, { rows }) => {
+        if (rows.length > 0) setScanSpeed(parseInt(rows.item(0).value, 10) || 500);
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_auditory';", [], (_, { rows }) => {
+        if (rows.length > 0) setAuditoryFeedback(rows.item(0).value === 'true');
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_highlight_color';", [], (_, { rows }) => {
+        if (rows.length > 0) setHighlightColor(rows.item(0).value);
       });
     });
 
@@ -462,8 +484,13 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       if (ttsSettings.voice) {
         tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('tts_voice', ?);", [ttsSettings.voice]);
       }
+      // Accessibility settings
+      tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_enabled', ?);", [accessibilityEnabled ? 'true' : 'false']);
+      tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_scan_speed', ?);", [scanSpeed.toString()]);
+      tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_auditory', ?);", [auditoryFeedback ? 'true' : 'false']);
+      tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_highlight_color', ?);", [highlightColor]);
     });
-    Alert.alert('Settings Saved', 'TTS settings have been updated.');
+    Alert.alert('Settings Saved', 'TTS and Accessibility settings have been updated.');
   };
 
   const getEmotionSettings = (emotion: typeof emotionPreset) => {
@@ -773,6 +800,57 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                   {ttsSettings.voice && (
                     <Text style={styles.voiceMeta}>(Selected voice will be used for speech output)</Text>
                   )}
+                </>
+              )}
+            </View>
+
+            {/* Accessibility Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Accessibility</Text>
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Switch Scanning Mode</Text>
+                <Switch
+                  value={accessibilityEnabled}
+                  onValueChange={setAccessibilityEnabled}
+                />
+              </View>
+              {accessibilityEnabled && (
+                <>
+                  <View style={styles.settingRow}>
+                    <Text style={styles.settingLabel}>Scan Speed</Text>
+                    <View style={styles.speedButtons}>
+                      {['Slow', 'Medium', 'Fast'].map(speed => {
+                        const speedMap = { Slow: 1000, Medium: 500, Fast: 250 };
+                        const isSelected = scanSpeed === speedMap[speed];
+                        return (
+                          <TouchableOpacity
+                            key={speed}
+                            style={[styles.speedButton, isSelected && styles.speedButtonActive]}
+                            onPress={() => setScanSpeed(speedMap[speed])}
+                          >
+                            <Text style={[styles.speedButtonText, isSelected && styles.speedButtonTextActive]}>{speed}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                  <View style={styles.settingRow}>
+                    <Text style={styles.settingLabel}>Auditory Feedback</Text>
+                    <Switch
+                      value={auditoryFeedback}
+                      onValueChange={setAuditoryFeedback}
+                    />
+                  </View>
+                  <Text style={styles.inputLabel}>Highlight Color</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPicker}>
+                    {['#FFEB3B', '#FFFFFF', '#4CAF50', '#2196F3', '#FF9800', '#F44336'].map(color => (
+                      <TouchableOpacity
+                        key={color}
+                        style={[styles.colorSwatch, { backgroundColor: color }, highlightColor === color && styles.colorSwatchSelected]}
+                        onPress={() => setHighlightColor(color)}
+                      />
+                    ))}
+                  </ScrollView>
                 </>
               )}
             </View>
@@ -1620,6 +1698,34 @@ const styles = StyleSheet.create({
   },
   restoreButtonText: {
     color: '#000',
+    fontWeight: '600',
+  },
+
+  // Accessibility styles
+  speedButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  speedButton: {
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  speedButtonActive: {
+    backgroundColor: '#6200EE',
+    borderColor: '#6200EE',
+  },
+  speedButtonText: {
+    color: '#AAA',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  speedButtonTextActive: {
+    color: '#FFF',
     fontWeight: '600',
   },
 });
