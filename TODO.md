@@ -3,11 +3,13 @@
 **Priority Order** (high → low)
 - [x] **Caregiver Mode** (customization, vocabulary management, settings) ✅ Completed 2026-03-26
 - [x] **Adaptive Word Prediction** (SQLite usage-based suggestions by count & recency) ✅ Completed 2026-03-26
-- [x] **Vocabulary Expansion UI** (improved word add/edit with validation, quick category creation, missing category modal added) ✅ Completed 2026-03-26
+- [P6-in-progress] Testing & Accessibility Audit
+  - UI/UX Testing in progress (Sub-agent 1)
+  - Accessibility Testing in progress (Sub-agent 2)
+  - Timeline estimate: 48-72 hours for comprehensive testing and fixes
 - [x] **Emotional Tone TTS** (extended presets, voice selection) ✅ Completed 2026-03-26
 - [x] **Cloud Sync (encrypted optional backup)** ✅ Completed 2026-03-26 (Phase 1+2+3)
-- [P5] Advanced Accessibility (switch control, eye tracking support)
-- [P6] Testing & Accessibility Audit
+- [x] **Advanced Accessibility** (switch control with automatic and two-switch modes, eye tracking foundation laid) ✅ Completed 2026-03-26
 - [P7] Documentation & Deployment Guides
 
 **Completed Sprint (2026-03-26)**
@@ -44,9 +46,11 @@
 - All changes must maintain offline-first architecture
 - UI must meet WCAG AA contrast minimums (4.5:1)
 - SQLite schema: words(id, label, speak, color, category, usage_count, last_used), settings(key, value)
-- Next priority: Cloud Sync (encrypted optional backup) or Advanced Accessibility based on user needs
+- Testing & Accessibility Audit in progress (started 2026-03-26)
+  - UI/UX Testing Phase: Validating WCAG compliance, navigation flows, and interaction patterns
+  - Accessibility Testing Phase: Verifying switch control, eye tracking, screen reader compatibility
 
-** blockers**
+**Blockers**
 - None currently
 
 ---
