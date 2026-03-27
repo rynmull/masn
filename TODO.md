@@ -16,16 +16,21 @@
 - [x] **Advanced Accessibility** (switch control with automatic and two-switch modes, eye tracking foundation laid) ✅ Completed 2026-03-26
 - [x] **Documentation & Deployment Guides (P7)** ✅ Completed 2026-03-27
 
-**Upcoming Features**
+**Current Features**
 
 ## Eye Tracking Integration (P8) - 8 Week Timeline
 Technical specification completed: `/docs/specs/eye-tracking.md`
 
 ### Phase 1: Foundation (2 weeks)
-- [🔄] WebGazer.js integration (in progress)
-- [🔄] EyeTrackingManager implementation (in progress)
-- [🔄] Calibration UI prototype (in progress)
-- [ ] Basic gaze visualization
+- [x] Basic calibration UI prototype - Completed with features:
+  - 5-point calibration pattern
+  - Responsive point visualization
+  - User feedback system
+  - Progress tracking
+  - Clean state management
+- [ ] WebGazer.js integration
+- [ ] EyeTrackingManager implementation
+- [ ] Gaze visualization
 
 ### Phase 2: Core Features (3 weeks)
 - [ ] Calibration workflow
@@ -62,12 +67,13 @@ Technical specification completed: `/docs/specs/eye-tracking.md`
 - All changes must maintain offline-first architecture
 - UI meets WCAG AA contrast minimums (4.5:1)
 - SQLite schema: words(id, label, speak, color, category, usage_count, last_used), settings(key, value)
-- Eye tracking implementation will use WebGazer.js with custom calibration system
+- Eye tracking implementation using WebGazer.js with 5-point calibration system
 
 **Next Immediate Tasks**
-1. Begin Phase 1 of eye tracking implementation
-2. Design enhanced UI theme system
-3. Research ML frameworks for prediction improvements
+1. Integrate WebGazer.js with calibration UI
+2. Implement EyeTrackingManager
+3. Add gaze visualization overlay
+4. Begin designing enhanced UI theme system
 
 **Blockers**
 - None currently
