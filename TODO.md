@@ -15,54 +15,59 @@
 - [x] **Cloud Sync (encrypted optional backup)** ✅ Completed 2026-03-26 (Phase 1+2+3)
 - [x] **Advanced Accessibility** (switch control with automatic and two-switch modes, eye tracking foundation laid) ✅ Completed 2026-03-26
 - [x] **Documentation & Deployment Guides (P7)** ✅ Completed 2026-03-27
-  - ✅ User Guide completed:
-    - Installation and setup
-    - Basic usage and navigation
-    - Caregiver mode features
-    - Voice/tone customization
-    - Accessibility options
-    - Cloud sync and backup
-  - ✅ Deployment Guide completed:
-    - System requirements
-    - Build process
-    - Database setup
-    - Cloud sync configuration
-    - Testing procedures
-    - Troubleshooting guide
-  - ✅ Security Documentation completed:
-    - Security architecture
-    - Data privacy guidelines
-    - Encryption standards
-    - Backup & recovery procedures
-    - Compliance requirements
-  - ✅ API Documentation completed:
-    - OpenAPI 3.0 specification
-    - WebSocket events documentation
-    - Authentication & authorization
-    - Rate limits & quotas
-    - Example API calls
-  - ✅ Technical Documentation completed:
-    - Architecture overview
-    - Core components
-    - Database schema
-    - Build system configuration
-    - Testing framework
+
+**Upcoming Features**
+
+## Eye Tracking Integration (P8) - 8 Week Timeline
+Technical specification completed: `/docs/specs/eye-tracking.md`
+
+### Phase 1: Foundation (2 weeks)
+- [ ] WebGazer.js integration
+- [ ] EyeTrackingManager implementation
+- [ ] Calibration UI prototype
+- [ ] Basic gaze visualization
+
+### Phase 2: Core Features (3 weeks)
+- [ ] Calibration workflow
+- [ ] Data collection & processing
+- [ ] Persistence layer
+- [ ] Debugging tools
+
+### Phase 3: Optimization (2 weeks)
+- [ ] Performance optimization
+- [ ] Error handling
+- [ ] Browser compatibility
+- [ ] Documentation updates
+
+### Phase 4: Testing & Polish (1 week)
+- [ ] Comprehensive testing
+- [ ] UI/UX refinements
+- [ ] Performance monitoring
+- [ ] Final documentation
+
+## Additional Planned Improvements
+1. Enhanced UI Themes
+   - High contrast options
+   - Color-blind friendly modes
+   - Dark/light variations
+   - Custom theme builder
+
+2. Machine Learning Enhancements
+   - Advanced word prediction
+   - Pattern recognition
+   - Usage optimization
+   - Personalized suggestions
 
 **Implementation Notes**
 - All changes must maintain offline-first architecture
 - UI meets WCAG AA contrast minimums (4.5:1)
 - SQLite schema: words(id, label, speak, color, category, usage_count, last_used), settings(key, value)
-- Documentation Status:
-  - User Guide: ✅ Complete
-  - Deployment Guide: ✅ Complete
-  - Security Docs: ✅ Complete
-  - API Docs: ✅ Complete
-  - Technical Docs: ✅ Complete
+- Eye tracking implementation will use WebGazer.js with custom calibration system
 
-**Next Steps**
-- Begin planning eye tracking feature implementation
-- Consider additional UI themes for different visual preferences
-- Explore machine learning enhancements for word prediction
+**Next Immediate Tasks**
+1. Begin Phase 1 of eye tracking implementation
+2. Design enhanced UI theme system
+3. Research ML frameworks for prediction improvements
 
 **Blockers**
 - None currently
