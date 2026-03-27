@@ -137,6 +137,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
   const [scanSpeed, setScanSpeed] = useState<number>(500);
   const [auditoryFeedback, setAuditoryFeedback] = useState(true);
   const [highlightColor, setHighlightColor] = useState('#FFEB3B');
+  const [scanType, setScanType] = useState<'automatic' | 'two_switch'>('automatic');
 
   // Load data from DB
   useEffect(() => {
@@ -246,6 +247,15 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       });
       tx.executeSql("SELECT * FROM settings WHERE key='accessibility_highlight_color';", [], (_, { rows }) => {
         if (rows.length > 0) setHighlightColor(rows.item(0).value);
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_scan_type';", [], (_, { rows }) => {
+        if (rows.length > 0) {
+          const scanType = rows.item(0).value;
+          // Default to automatic if not set or invalid
+          setScanType(scanType === 'two_switch' ? 'two_switch' : 'automatic');
+        } else {
+          setScanType('automatic'); // Default
+        }
       });
     });
 
@@ -489,6 +499,7 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
       tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_scan_speed', ?);", [scanSpeed.toString()]);
       tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_auditory', ?);", [auditoryFeedback ? 'true' : 'false']);
       tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_highlight_color', ?);", [highlightColor]);
+      tx.executeSql("INSERT OR REPLACE INTO settings (key, value) VALUES ('accessibility_scan_type', ?);", [scanType]);
     });
     Alert.alert('Settings Saved', 'TTS and Accessibility settings have been updated.');
   };
@@ -839,6 +850,13 @@ export default function CaregiverScreen({ onExit }: { onExit: () => void }) {
                     <Switch
                       value={auditoryFeedback}
                       onValueChange={setAuditoryFeedback}
+                    />
+                  </View>
+                  <View style={styles.settingRow}>
+                    <Text style={styles.settingLabel}>Scanning Mode</Text>
+                    <Switch
+                      value={scanType === 'two_switch'}
+                      onValueChange={value => setScanType(value ? 'two_switch' : 'automatic')}
                     />
                   </View>
                   <Text style={styles.inputLabel}>Highlight Color</Text>

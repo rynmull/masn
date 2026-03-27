@@ -12,6 +12,7 @@ interface AccessibilitySettings {
   scanSpeed: number;
   auditory: boolean;
   highlightColor: string;
+  scanType: 'automatic' | 'two_switch';
 }
 
 const db = openDatabase('masn.db');
@@ -72,6 +73,7 @@ export default function App() {
     scanSpeed: 500,
     auditory: true,
     highlightColor: '#FFEB3B',
+    scanType: 'automatic',
   });
 
   // Load shared data (vocabulary & TTS settings) from database
@@ -165,6 +167,9 @@ export default function App() {
       });
       tx.executeSql("SELECT * FROM settings WHERE key='accessibility_highlight_color';", [], (_, { rows }) => {
         if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, highlightColor: rows.item(0).value }));
+      });
+      tx.executeSql("SELECT * FROM settings WHERE key='accessibility_scan_type';", [], (_, { rows }) => {
+        if (rows.length > 0) setAccessibilitySettings(prev => ({ ...prev, scanType: rows.item(0).value }));
       });
     });
   };
