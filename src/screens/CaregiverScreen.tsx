@@ -110,6 +110,8 @@ const STARTER_LOCAL_VOICE_PACKS: Array<{
   },
 ];
 
+const BUNDLED_LOCAL_VOICE_PACK_IDS = new Set(['adult_female_en_us_a1', 'adult_male_en_us_b1']);
+
 const COMMON_AAC_TERMS = ['mother', 'father', 'help', 'eat', 'drink', 'bathroom', 'happy', 'sad', 'stop', 'go'];
 const DEFAULT_EMOTION_PREVIEW_TEXT = 'I need help now';
 const CALIBRATION_PHRASES = ['I need help right now', 'I am feeling happy today', 'Please wait with me'];
@@ -503,15 +505,17 @@ export default function CaregiverScreen({
 
     if (installedVoicePacks.length === 0) {
       for (const pack of STARTER_LOCAL_VOICE_PACKS) {
+        const isInstalled = BUNDLED_LOCAL_VOICE_PACK_IDS.has(pack.id) ? 1 : 0;
         await runSql(
           `INSERT OR REPLACE INTO local_voice_packs (id, name, age_band, gender, locale, manifest_uri, is_installed)
-           VALUES (?, ?, ?, ?, ?, ?, 1);`,
+           VALUES (?, ?, ?, ?, ?, ?, ?);`,
           pack.id,
           pack.name,
           pack.age_band,
           pack.gender,
           pack.locale,
-          pack.manifest_uri
+          pack.manifest_uri,
+          isInstalled
         );
       }
 
@@ -1285,10 +1289,14 @@ export default function CaregiverScreen({
                         <View key={`pack-${pack.id}`} style={styles.voicePackRow}>
                           <TouchableOpacity
                             style={styles.voicePackSelect}
-                            onPress={() => setTtsSettings(prev => ({ ...prev, localVoicePackId: pack.id }))}
+                            onPress={() => {
+                              if (pack.is_installed !== 1) return;
+                              setTtsSettings(prev => ({ ...prev, localVoicePackId: pack.id }));
+                            }}
                           >
                             <Text style={styles.voicePackName}>{pack.name}</Text>
                             <Text style={styles.voicePackMeta}>{pack.id} • {pack.age_band || 'n/a'} • {pack.gender || 'n/a'} • {pack.locale || 'n/a'}</Text>
+                            {pack.is_installed !== 1 ? <Text style={styles.providerNote}>Not installed (missing model assets)</Text> : null}
                           </TouchableOpacity>
                           <View style={styles.voicePackActions}>
                             {ttsSettings.localVoicePackId === pack.id ? (

@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import { getLocalTtsBridge, installLocalTtsBridge } from './localTtsBridge';
 
+const DEFAULT_DEV_BRIDGE_URL = 'http://127.0.0.1:8765';
+
 const normalizeBaseUrl = (raw?: string): string | null => {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -8,7 +10,21 @@ const normalizeBaseUrl = (raw?: string): string | null => {
   return trimmed.replace(/\/+$/, '');
 };
 
+const resolveBridgeBaseUrl = (): string | null => {
+  const fromEnv = normalizeBaseUrl(process.env.EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL);
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  if (__DEV__) {
+    return DEFAULT_DEV_BRIDGE_URL;
+  }
+
+  return null;
+};
+
 let attemptedInstall = false;
+let warnedMissingBridge = false;
 
 export const registerPiperWebBridgeFromEnv = (): boolean => {
   if (Platform.OS !== 'web') return false;
@@ -23,8 +39,12 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
 
   attemptedInstall = true;
 
-  const baseUrl = normalizeBaseUrl(process.env.EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL);
+  const baseUrl = resolveBridgeBaseUrl();
   if (!baseUrl) {
+    if (!warnedMissingBridge) {
+      warnedMissingBridge = true;
+      console.warn('Piper web bridge not configured. Set EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL to enable local voice runtime.');
+    }
     return false;
   }
 

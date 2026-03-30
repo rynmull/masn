@@ -94,6 +94,7 @@ let currentWebAudio: HTMLAudioElement | null = null;
 let currentWebAudioUrl: string | null = null;
 let lastSpeechSignature: string | null = null;
 let lastSpeechAt = 0;
+let warnedLocalBridgeUnavailable = false;
 
 type LocalVoicePackRecord = {
   id: string;
@@ -319,7 +320,14 @@ const speakWithLocal = async (text: string, settings: RuntimeTtsSettings, emotio
     return;
   }
 
-  // Fallback until native bridge is installed.
+  if (!warnedLocalBridgeUnavailable) {
+    warnedLocalBridgeUnavailable = true;
+    console.warn(
+      'Local TTS bridge unavailable. Falling back to native TTS. On web, run voice_lab/scripts/piper_web_bridge_server.py and set EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL.'
+    );
+  }
+
+  // Fallback until a local bridge is installed.
   await speakWithNative(text, settings, emotion);
 };
 
