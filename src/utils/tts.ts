@@ -678,9 +678,14 @@ export const speakText = async (text: string, settings: RuntimeTtsSettings, emot
 
   const runtimeSettings = await withAdaptiveEmotionSettings(normalizedText, settings, emotion);
   const forceLocalOnly = isForceLocalOnlyMode();
+  const canUsePremium = !forceLocalOnly && !runtimeSettings.offlineOnlyMode && Boolean(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY);
+  const shouldAutoPremium = canUsePremium && (runtimeSettings.engine === 'native' || runtimeSettings.engine === 'local');
+
   const effectiveEngine: TtsEngine = forceLocalOnly && runtimeSettings.engine !== 'local' && runtimeSettings.engine !== 'native'
     ? 'native'
-    : runtimeSettings.engine;
+    : shouldAutoPremium
+      ? 'elevenlabs'
+      : runtimeSettings.engine;
 
   const providerOrder = getProviderFallbackOrder(effectiveEngine);
   let lastError: unknown = null;

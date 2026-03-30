@@ -147,6 +147,7 @@ export default function CaregiverScreen({
   onUserPopulationChange: (nextPopulation: UserPopulation) => void;
 }) {
   const forceLocalOnlyMode = isForceLocalOnlyMode();
+  const hasPremiumVoice = !forceLocalOnlyMode && Boolean(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY);
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [savedPinHash, setSavedPinHash] = useState<string | null>(null);
@@ -167,7 +168,7 @@ export default function CaregiverScreen({
   const [ttsSettings, setTtsSettings] = useState<TtsSettings>({
     pitch: 1.0,
     rate: 0.9,
-    engine: 'native',
+    engine: hasPremiumVoice ? 'elevenlabs' : 'native',
     elevenLabsVoiceId: '',
     localVoicePackId: '',
     adaptiveStyleEnabled: true,
@@ -439,6 +440,8 @@ export default function CaregiverScreen({
       const engine = ttsEngineRow.value;
       if (forceLocalOnlyMode && engine !== 'native' && engine !== 'local') {
         setTtsSettings(prev => ({ ...prev, engine: 'native' }));
+      } else if (hasPremiumVoice && (engine === 'native' || engine === 'local')) {
+        setTtsSettings(prev => ({ ...prev, engine: 'elevenlabs' }));
       } else {
         setTtsSettings(prev => ({ ...prev, engine }));
       }

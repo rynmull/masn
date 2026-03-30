@@ -50,12 +50,13 @@ const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
 
 export default function App() {
   const forceLocalOnlyMode = isForceLocalOnlyMode();
+  const hasPremiumVoice = !forceLocalOnlyMode && Boolean(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY);
   const [mode, setMode] = useState<AppMode>('user');
   const [vocabulary, setVocabulary] = useState<Record<string, Array<{ label: string; speak: string; color: string; symbol?: string | null }>>>({});
   const [ttsSettings, setTtsSettings] = useState<TtsSettings>({
     pitch: 1.0,
     rate: 0.9,
-    engine: 'native',
+    engine: hasPremiumVoice ? 'elevenlabs' : 'native',
     elevenLabsVoiceId: '',
     localVoicePackId: '',
     adaptiveStyleEnabled: true,
@@ -238,6 +239,8 @@ export default function App() {
       const engine = ttsEngineRow.value;
       if (forceLocalOnlyMode && engine !== 'native' && engine !== 'local') {
         setTtsSettings(prev => ({ ...prev, engine: 'native' }));
+      } else if (hasPremiumVoice && (engine === 'native' || engine === 'local')) {
+        setTtsSettings(prev => ({ ...prev, engine: 'elevenlabs' }));
       } else {
         setTtsSettings(prev => ({ ...prev, engine }));
       }
