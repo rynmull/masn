@@ -30,8 +30,63 @@ export interface RuntimeTtsSettings {
 
 const DEFAULT_ELEVENLABS_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
 
+type LocalSystemVoice = {
+  identifier?: string;
+  language?: string;
+  quality?: string;
+  name?: string;
+};
+
 const clamp = (value: number, min: number, max: number) => {
   return Math.min(max, Math.max(min, value));
+};
+
+let cachedPreferredLocalVoiceId: string | null | undefined;
+
+const resolvePreferredLocalVoiceId = async (): Promise<string | null> => {
+  if (cachedPreferredLocalVoiceId !== undefined) {
+    return cachedPreferredLocalVoiceId;
+  }
+
+  try {
+    const voices = (await Speech.getAvailableVoicesAsync()) as LocalSystemVoice[];
+    if (!voices.length) {
+      cachedPreferredLocalVoiceId = null;
+      return null;
+    }
+
+    const englishVoices = voices.filter(voice => {
+      const language = (voice.language ?? '').toLowerCase();
+      return language.startsWith('en');
+    });
+
+    const candidates = englishVoices.length > 0 ? englishVoices : voices;
+    const sorted = [...candidates].sort((a, b) => {
+      const qualityA = (a.quality ?? '').toLowerCase();
+      const qualityB = (b.quality ?? '').toLowerCase();
+      const enhancedScoreA = qualityA.includes('enhanced') ? 1 : 0;
+      const enhancedScoreB = qualityB.includes('enhanced') ? 1 : 0;
+      if (enhancedScoreA !== enhancedScoreB) {
+        return enhancedScoreB - enhancedScoreA;
+      }
+
+      const nameA = (a.name ?? '').toLowerCase();
+      const nameB = (b.name ?? '').toLowerCase();
+      const naturalScoreA = nameA.includes('neural') || nameA.includes('premium') ? 1 : 0;
+      const naturalScoreB = nameB.includes('neural') || nameB.includes('premium') ? 1 : 0;
+      if (naturalScoreA !== naturalScoreB) {
+        return naturalScoreB - naturalScoreA;
+      }
+
+      return 0;
+    });
+
+    cachedPreferredLocalVoiceId = sorted[0]?.identifier ?? null;
+    return cachedPreferredLocalVoiceId;
+  } catch {
+    cachedPreferredLocalVoiceId = null;
+    return null;
+  }
 };
 
 const buildRuntimeEmotionSettings = (settings: RuntimeTtsSettings, emotion: EmotionPreset) => {
@@ -248,11 +303,13 @@ export const stopAllSpeech = async () => {
 
 const speakWithNative = async (text: string, settings: RuntimeTtsSettings, emotion: EmotionPreset = 'neutral') => {
   const emotionSettings = buildRuntimeEmotionSettings(settings, emotion);
+  const preferredVoice = await resolvePreferredLocalVoiceId();
   Speech.stop();
   Speech.speak(text, {
     language: 'en-US',
     pitch: emotionSettings.pitch,
     rate: emotionSettings.rate,
+    ...(preferredVoice ? { voice: preferredVoice } : {}),
   });
 };
 
