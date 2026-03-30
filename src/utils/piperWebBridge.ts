@@ -3,6 +3,16 @@ import { getLocalTtsBridge, installLocalTtsBridge } from './localTtsBridge';
 
 const DEFAULT_DEV_BRIDGE_URL = 'http://127.0.0.1:8765';
 
+const isLikelyLocalHost = (host: string): boolean => {
+  return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+};
+
+const buildGithubDevForwardedUrl = (protocol: string, host: string): string | null => {
+  const match = host.match(/^(.*)-\d+\.app\.github\.dev$/);
+  if (!match) return null;
+  return `${protocol}//${match[1]}-8765.app.github.dev`;
+};
+
 const normalizeBaseUrl = (raw?: string): string | null => {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -21,10 +31,19 @@ const buildBridgeBaseUrls = (): string[] => {
   if (__DEV__ && typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname;
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    urls.push(`${protocol}//${host}:8765`);
+
+    const githubForwarded = buildGithubDevForwardedUrl(protocol, host);
+    if (githubForwarded) {
+      urls.push(githubForwarded);
+    } else {
+      urls.push(`${protocol}//${host}:8765`);
+    }
   }
 
-  if (__DEV__) {
+  if (
+    __DEV__ &&
+    (typeof window === 'undefined' || !window.location?.hostname || isLikelyLocalHost(window.location.hostname))
+  ) {
     urls.push(DEFAULT_DEV_BRIDGE_URL);
   }
 

@@ -191,7 +191,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
   parser = argparse.ArgumentParser()
-  parser.add_argument("--host", default="127.0.0.1")
+  parser.add_argument("--host", default="0.0.0.0")
   parser.add_argument("--port", default=8765, type=int)
   parser.add_argument("--root", default=".", type=Path)
   args = parser.parse_args()
