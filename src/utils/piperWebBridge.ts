@@ -10,17 +10,25 @@ const normalizeBaseUrl = (raw?: string): string | null => {
   return trimmed.replace(/\/+$/, '');
 };
 
-const resolveBridgeBaseUrl = (): string | null => {
+const buildBridgeBaseUrls = (): string[] => {
+  const urls: string[] = [];
+
   const fromEnv = normalizeBaseUrl(process.env.EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL);
   if (fromEnv) {
-    return fromEnv;
+    urls.push(fromEnv);
+  }
+
+  if (__DEV__ && typeof window !== 'undefined' && window.location?.hostname) {
+    const host = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    urls.push(`${protocol}//${host}:8765`);
   }
 
   if (__DEV__) {
-    return DEFAULT_DEV_BRIDGE_URL;
+    urls.push(DEFAULT_DEV_BRIDGE_URL);
   }
 
-  return null;
+  return Array.from(new Set(urls));
 };
 
 let attemptedInstall = false;
@@ -39,8 +47,8 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
 
   attemptedInstall = true;
 
-  const baseUrl = resolveBridgeBaseUrl();
-  if (!baseUrl) {
+  const baseUrls = buildBridgeBaseUrls();
+  if (baseUrls.length === 0) {
     if (!warnedMissingBridge) {
       warnedMissingBridge = true;
       console.warn('Piper web bridge not configured. Set EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL to enable local voice runtime.');
@@ -50,35 +58,49 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
 
   installLocalTtsBridge({
     synthesize: async payload => {
-      const response = await fetch(`${baseUrl}/synthesize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      let lastError: unknown = null;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Piper web bridge failed (${response.status}): ${errorText.slice(0, 240)}`);
+      for (const baseUrl of baseUrls) {
+        try {
+          const response = await fetch(`${baseUrl}/synthesize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Piper web bridge failed (${response.status}) via ${baseUrl}: ${errorText.slice(0, 240)}`);
+          }
+
+          return response.arrayBuffer();
+        } catch (error) {
+          lastError = error;
+        }
       }
 
-      return response.arrayBuffer();
+      throw lastError instanceof Error ? lastError : new Error('Piper web bridge request failed for all configured hosts');
     },
     getInfo: async () => {
-      try {
-        const response = await fetch(`${baseUrl}/info`, { method: 'GET' });
-        if (!response.ok) {
-          return { provider: 'piper-web-bridge' };
+      for (const baseUrl of baseUrls) {
+        try {
+          const response = await fetch(`${baseUrl}/info`, { method: 'GET' });
+          if (!response.ok) {
+            continue;
+          }
+          const data = (await response.json()) as { provider?: string; version?: string };
+          return {
+            provider: data.provider ?? 'piper-web-bridge',
+            version: data.version,
+          };
+        } catch {
+          // Try next host candidate.
         }
-        const data = (await response.json()) as { provider?: string; version?: string };
-        return {
-          provider: data.provider ?? 'piper-web-bridge',
-          version: data.version,
-        };
-      } catch {
-        return { provider: 'piper-web-bridge' };
       }
+
+      return { provider: 'piper-web-bridge' };
     },
   });
 

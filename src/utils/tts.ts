@@ -95,6 +95,9 @@ let currentWebAudioUrl: string | null = null;
 let lastSpeechSignature: string | null = null;
 let lastSpeechAt = 0;
 let warnedLocalBridgeUnavailable = false;
+let localBridgeFailureUntil = 0;
+
+const LOCAL_BRIDGE_FAILURE_COOLDOWN_MS = 8000;
 
 type LocalVoicePackRecord = {
   id: string;
@@ -277,6 +280,11 @@ const speakWithLocal = async (text: string, settings: RuntimeTtsSettings, emotio
   const bridge = getLocalTtsBridge();
 
   if (bridge?.synthesize) {
+    if (Date.now() < localBridgeFailureUntil) {
+      await speakWithNative(text, settings, emotion);
+      return;
+    }
+
     const emotionSettings = buildRuntimeEmotionSettings(settings, emotion);
     const spokenText = shapeTextForEmotion(text, emotion);
     const piperConfig = derivePiperSynthesisConfig({
@@ -286,19 +294,26 @@ const speakWithLocal = async (text: string, settings: RuntimeTtsSettings, emotio
       elevenLabsVoiceSettings: emotionSettings.elevenLabsVoiceSettings,
     });
 
-    const result = await bridge.synthesize({
-      text: spokenText,
-      emotion,
-      runtime: 'piper',
-      voicePackId: selectedPackId,
-      voicePackManifestUri: selectedPack.manifest_uri ?? undefined,
-      voicePackLocale: selectedPack.locale ?? undefined,
-      voicePackAgeBand: selectedPack.age_band ?? undefined,
-      voicePackGender: selectedPack.gender ?? undefined,
-      pitch: emotionSettings.pitch,
-      rate: emotionSettings.rate,
-      piperConfig,
-    });
+    let result: Awaited<ReturnType<typeof bridge.synthesize>>;
+    try {
+      result = await bridge.synthesize({
+        text: spokenText,
+        emotion,
+        runtime: 'piper',
+        voicePackId: selectedPackId,
+        voicePackManifestUri: selectedPack.manifest_uri ?? undefined,
+        voicePackLocale: selectedPack.locale ?? undefined,
+        voicePackAgeBand: selectedPack.age_band ?? undefined,
+        voicePackGender: selectedPack.gender ?? undefined,
+        pitch: emotionSettings.pitch,
+        rate: emotionSettings.rate,
+        piperConfig,
+      });
+      localBridgeFailureUntil = 0;
+    } catch (error) {
+      localBridgeFailureUntil = Date.now() + LOCAL_BRIDGE_FAILURE_COOLDOWN_MS;
+      throw error;
+    }
 
     if (typeof result === 'string') {
       const binary = globalThis.atob(result);
