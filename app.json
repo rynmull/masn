@@ -1,38 +1,46 @@
 {
   "expo": {
-    "name": "Masn",
-    "slug": "masn",
-    "version": "0.1.0",
+    "name": "MASN",
+    "slug": "masn-aac",
+    "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1a1a1a"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.masn.aac",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Not used",
-        "NSSpeechRecognitionUsageDescription": "Not used"
+        "NSMicrophoneUsageDescription": "MASN can record your voice for custom sound effects on symbols if you choose.",
+        "NSSpeechRecognitionUsageDescription": "MASN does not use speech recognition."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a1a"
+        "backgroundColor": "#FFFFFF"
       },
-      "permissions": []
+      "package": "com.masn.aac",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-speech"
-    ]
+      "expo-asset"
+    ],
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_APP_RESUME",
+      "fallbackToCacheTimeout": 30000
+    }
   }
 }

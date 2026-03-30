@@ -1,0 +1,24 @@
+{
+  "pack_id": "adult_female_en_us_a1",
+  "display_name": "Adult Female EN-US A1",
+  "engine": "piper",
+  "locale": "en-US",
+  "age_band": "adult",
+  "gender": "female",
+  "model": {
+    "format": "onnx",
+    "sample_rate_hz": 22050,
+    "model_path": "voice_lab/packs/adult_female_en_us_a1/assets/model.onnx",
+    "config_path": "voice_lab/packs/adult_female_en_us_a1/assets/model.onnx.json"
+  },
+  "downloads": {
+    "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
+    "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+  },
+  "defaults": {
+    "lengthScale": 1.0,
+    "noiseScale": 0.72,
+    "noiseW": 0.8,
+    "sentenceSilenceSeconds": 0.12
+  }
+}

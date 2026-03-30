@@ -1,0 +1,5 @@
+speaker_id,age_band,gender,locale,accent_notes,consent_scope,minutes_recorded
+spk_001,adult,female,en-US,General American,production_offline,45
+spk_002,older_adult,male,en-US,Southern US,production_offline,50
+spk_003,teen,female,en-GB,London,production_offline,35
+spk_004,child,male,en-US,Midwest,research,20

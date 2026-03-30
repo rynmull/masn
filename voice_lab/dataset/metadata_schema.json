@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://masn.local/voice_lab/metadata_schema.json",
+  "title": "MASN Voice Speaker Metadata",
+  "type": "object",
+  "required": [
+    "speaker_id",
+    "age_band",
+    "gender",
+    "locale",
+    "consent_scope"
+  ],
+  "properties": {
+    "speaker_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "age_band": {
+      "type": "string",
+      "enum": ["child", "teen", "adult", "older_adult"]
+    },
+    "gender": {
+      "type": "string",
+      "enum": ["male", "female"]
+    },
+    "locale": {
+      "type": "string",
+      "description": "BCP-47 locale tag preferred, e.g. en-US"
+    },
+    "accent_notes": {
+      "type": "string"
+    },
+    "consent_scope": {
+      "type": "string",
+      "enum": ["research", "production", "production_offline"]
+    },
+    "minutes_recorded": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}
