@@ -36,6 +36,15 @@ Notes:
 - Some system/browser TTS engines ignore pitch/rate controls even when passed correctly.
 - When ElevenLabs is selected but unavailable (missing key/network error), the app falls back to native TTS.
 
+## Optional: Local Piper Web Bridge (Advanced)
+1. Start bridge server: `python3 voice_lab/scripts/piper_web_bridge_server.py --port 8765 --root /workspaces/masn`
+2. Set `EXPO_PUBLIC_PIPER_WEB_BRIDGE_URL` if not using the default.
+3. If running from hosted `github.dev` URLs, set `EXPO_PUBLIC_ENABLE_PIPER_WEB_BRIDGE=true` to force-enable bridge attempts.
+
+Notes:
+- On hosted web environments (`*.github.dev`), local engine defaults to native speech fallback to avoid tunnel/CORS instability.
+- Native iOS/Android local runtime path remains unchanged.
+
 ## Optional: Proprietary Voice Setup
 1. Set `EXPO_PUBLIC_PROPRIETARY_TTS_URL` (base URL for your TTS service).
 2. Optionally set `EXPO_PUBLIC_PROPRIETARY_TTS_API_KEY`.

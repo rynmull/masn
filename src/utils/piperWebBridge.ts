@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
 import { getLocalTtsBridge, installLocalTtsBridge } from './localTtsBridge';
+import { isHostedGithubWeb } from './webHostDetection';
 
 const DEFAULT_DEV_BRIDGE_URL = 'http://127.0.0.1:8765';
+const ENABLE_PIPER_WEB_BRIDGE_ENV = 'EXPO_PUBLIC_ENABLE_PIPER_WEB_BRIDGE';
 
 const isLikelyLocalHost = (host: string): boolean => {
   return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
@@ -18,6 +20,10 @@ const normalizeBaseUrl = (raw?: string): string | null => {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   return trimmed.replace(/\/+$/, '');
+};
+
+const isPiperWebBridgeExplicitlyEnabled = (): boolean => {
+  return process.env[ENABLE_PIPER_WEB_BRIDGE_ENV] === 'true';
 };
 
 const buildBridgeBaseUrls = (): string[] => {
@@ -52,6 +58,7 @@ const buildBridgeBaseUrls = (): string[] => {
 
 let attemptedInstall = false;
 let warnedMissingBridge = false;
+let warnedHostedWebDisabled = false;
 
 export const registerPiperWebBridgeFromEnv = (): boolean => {
   if (Platform.OS !== 'web') return false;
@@ -61,6 +68,17 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
   }
 
   if (attemptedInstall) {
+    return false;
+  }
+
+  if (typeof window !== 'undefined' && isHostedGithubWeb(window.location?.hostname) && !isPiperWebBridgeExplicitlyEnabled()) {
+    attemptedInstall = true;
+    if (!warnedHostedWebDisabled) {
+      warnedHostedWebDisabled = true;
+      console.warn(
+        `Piper web bridge disabled on hosted github.dev environments. Using native speech fallback. Set ${ENABLE_PIPER_WEB_BRIDGE_ENV}=true to force-enable.`
+      );
+    }
     return false;
   }
 
