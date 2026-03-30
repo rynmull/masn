@@ -1,6 +1,6 @@
 import type { EmotionPreset } from './ttsPresets';
 
-export type TtsEngine = 'native' | 'elevenlabs' | 'proprietary' | 'local';
+export type TtsEngine = 'native' | 'elevenlabs' | 'proprietary' | 'local' | 'chatterbox';
 
 export interface SpeechCacheKeyInput {
   text: string;
@@ -25,6 +25,9 @@ export const getProviderFallbackOrder = (engine: TtsEngine): TtsEngine[] => {
   }
   if (engine === 'elevenlabs') {
     return ['elevenlabs', 'native'];
+  }
+  if (engine === 'chatterbox') {
+    return ['chatterbox', 'native'];
   }
   return ['native'];
 };

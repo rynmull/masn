@@ -226,7 +226,13 @@ export default function App() {
     }
 
     const ttsEngineRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_engine';");
-    if (ttsEngineRow?.value === 'native' || ttsEngineRow?.value === 'elevenlabs' || ttsEngineRow?.value === 'proprietary' || ttsEngineRow?.value === 'local') {
+    if (
+      ttsEngineRow?.value === 'native' ||
+      ttsEngineRow?.value === 'elevenlabs' ||
+      ttsEngineRow?.value === 'proprietary' ||
+      ttsEngineRow?.value === 'local' ||
+      ttsEngineRow?.value === 'chatterbox'
+    ) {
       const engine = ttsEngineRow.value;
       setTtsSettings(prev => ({ ...prev, engine }));
     }

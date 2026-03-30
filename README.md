@@ -65,6 +65,20 @@ Expected endpoint contract:
 Notes:
 - If proprietary synthesis fails or is unavailable, the app falls back to native TTS.
 
+## Optional: Chatterbox Turbo Setup
+1. Set `EXPO_PUBLIC_CHATTERBOX_TTS_URL` (base URL for your Chatterbox-compatible synth endpoint).
+2. Optionally set `EXPO_PUBLIC_CHATTERBOX_TTS_API_KEY`.
+3. Optionally set `EXPO_PUBLIC_CHATTERBOX_VOICE_ID`.
+4. In caregiver mode, set Voice Engine to `Chatterbox Turbo`.
+
+Expected endpoint contract:
+- `POST {EXPO_PUBLIC_CHATTERBOX_TTS_URL}/synthesize`
+- Request JSON includes `text`, `emotion`, `pitch`, `rate`, optional `voiceId`, and `format`.
+- Response: audio bytes (`audio/mpeg` or `audio/wav`).
+
+Notes:
+- If Chatterbox synthesis fails or is unavailable, the app falls back to native TTS.
+
 ## Voice Lab (Build Your Own AI Voices)
 - Use [voice_lab/README.md](voice_lab/README.md) to start consented voice collection and dataset prep.
 - Includes:

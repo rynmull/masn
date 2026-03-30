@@ -114,6 +114,12 @@ const getProprietaryTtsUrl = (): string | null => {
   return raw.replace(/\/+$/, '');
 };
 
+const getChatterboxTtsUrl = (): string | null => {
+  const raw = process.env.EXPO_PUBLIC_CHATTERBOX_TTS_URL?.trim();
+  if (!raw) return null;
+  return raw.replace(/\/+$/, '');
+};
+
 const hashToSeed = (input: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
@@ -532,6 +538,48 @@ const speakWithProprietary = async (text: string, settings: RuntimeTtsSettings, 
   await playAudioBuffer(arrayBuffer, 'proprietary');
 };
 
+const speakWithChatterbox = async (text: string, settings: RuntimeTtsSettings, emotion: EmotionPreset) => {
+  const baseUrl = getChatterboxTtsUrl();
+  if (!baseUrl) {
+    throw new Error('Missing EXPO_PUBLIC_CHATTERBOX_TTS_URL');
+  }
+
+  const emotionSettings = buildRuntimeEmotionSettings(settings, emotion);
+  const spokenText = shapeTextForEmotion(text, emotion);
+  const apiKey = process.env.EXPO_PUBLIC_CHATTERBOX_TTS_API_KEY?.trim();
+  const voiceId = process.env.EXPO_PUBLIC_CHATTERBOX_VOICE_ID?.trim();
+  const headers: Record<string, string> = {
+    Accept: 'audio/mpeg, audio/wav',
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  const response = await fetch(`${baseUrl}/synthesize`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      text: spokenText,
+      emotion,
+      pitch: emotionSettings.pitch,
+      rate: emotionSettings.rate,
+      voiceId,
+      format: 'mp3',
+      model: 'chatterbox-turbo',
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Chatterbox TTS failed (${response.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  await playAudioBuffer(arrayBuffer, 'chatterbox');
+};
+
 type TtsProvider = {
   id: TtsEngine;
   isAvailable: (settings: RuntimeTtsSettings) => boolean;
@@ -558,6 +606,11 @@ const PROVIDERS: Record<TtsEngine, TtsProvider> = {
     id: 'proprietary',
     isAvailable: settings => !settings.offlineOnlyMode && Boolean(getProprietaryTtsUrl()),
     speak: speakWithProprietary,
+  },
+  chatterbox: {
+    id: 'chatterbox',
+    isAvailable: settings => !settings.offlineOnlyMode && Boolean(getChatterboxTtsUrl()),
+    speak: speakWithChatterbox,
   },
 };
 

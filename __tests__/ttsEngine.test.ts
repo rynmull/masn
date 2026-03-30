@@ -21,6 +21,10 @@ describe('ttsEngine helpers', () => {
     expect(getProviderFallbackOrder('local')).toEqual(['local', 'native']);
   });
 
+  it('returns provider order for chatterbox engine', () => {
+    expect(getProviderFallbackOrder('chatterbox')).toEqual(['chatterbox', 'native']);
+  });
+
   it('builds deterministic cache keys for equivalent text', () => {
     const keyA = buildSpeechCacheKey({
       text: '  Need   help  now ',

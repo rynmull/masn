@@ -427,7 +427,13 @@ export default function CaregiverScreen({
     if (rateRow?.value) setTtsSettings(prev => ({ ...prev, rate: parseFloat(rateRow.value) }));
 
     const ttsEngineRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_engine';");
-    if (ttsEngineRow?.value === 'native' || ttsEngineRow?.value === 'elevenlabs' || ttsEngineRow?.value === 'proprietary' || ttsEngineRow?.value === 'local') {
+    if (
+      ttsEngineRow?.value === 'native' ||
+      ttsEngineRow?.value === 'elevenlabs' ||
+      ttsEngineRow?.value === 'proprietary' ||
+      ttsEngineRow?.value === 'local' ||
+      ttsEngineRow?.value === 'chatterbox'
+    ) {
       const engine = ttsEngineRow.value;
       setTtsSettings(prev => ({ ...prev, engine }));
     }
@@ -1254,7 +1260,7 @@ export default function CaregiverScreen({
               </View>
               <Text style={styles.settingLabel}>Voice Engine</Text>
               <View style={styles.presetRow}>
-                {(['local', 'native', 'elevenlabs', 'proprietary'] as const).map(engine => (
+                {(['local', 'native', 'elevenlabs', 'chatterbox', 'proprietary'] as const).map(engine => (
                   <TouchableOpacity
                     key={engine}
                     style={[
@@ -1267,6 +1273,7 @@ export default function CaregiverScreen({
                       {engine === 'local' ? 'Local (Offline AI)'
                         : engine === 'native' ? 'Native'
                           : engine === 'elevenlabs' ? 'ElevenLabs'
+                            : engine === 'chatterbox' ? 'Chatterbox Turbo'
                             : 'Proprietary'}
                     </Text>
                   </TouchableOpacity>
@@ -1486,6 +1493,11 @@ export default function CaregiverScreen({
               {ttsSettings.engine === 'proprietary' && (
                 <Text style={styles.providerNote}>
                   Set EXPO_PUBLIC_PROPRIETARY_TTS_URL (and optional EXPO_PUBLIC_PROPRIETARY_TTS_API_KEY) in your environment. Native voice is used automatically if unavailable.
+                </Text>
+              )}
+              {ttsSettings.engine === 'chatterbox' && (
+                <Text style={styles.providerNote}>
+                  Set EXPO_PUBLIC_CHATTERBOX_TTS_URL (and optional EXPO_PUBLIC_CHATTERBOX_TTS_API_KEY / EXPO_PUBLIC_CHATTERBOX_VOICE_ID). Native voice is used automatically if unavailable.
                 </Text>
               )}
             </View>
