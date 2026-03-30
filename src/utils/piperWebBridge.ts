@@ -83,6 +83,7 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
         try {
           const response = await fetch(`${baseUrl}/synthesize`, {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
@@ -105,7 +106,11 @@ export const registerPiperWebBridgeFromEnv = (): boolean => {
     getInfo: async () => {
       for (const baseUrl of baseUrls) {
         try {
-          const response = await fetch(`${baseUrl}/info`, { method: 'GET' });
+          const response = await fetch(`${baseUrl}/info`, {
+            method: 'GET',
+            credentials: 'include',
+          });
+
           if (!response.ok) {
             continue;
           }

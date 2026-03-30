@@ -90,13 +90,21 @@ def run_piper(
 class Handler(BaseHTTPRequestHandler):
   root = Path(".")
 
+  def _send_cors_headers(self) -> None:
+    origin = self.headers.get("Origin", "*")
+    allow_origin = origin if origin else "*"
+    self.send_header("Access-Control-Allow-Origin", allow_origin)
+    self.send_header("Access-Control-Allow-Credentials", "true")
+    self.send_header("Vary", "Origin")
+    self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+
   def _send_json(self, status: int, body: dict) -> None:
     data = json.dumps(body).encode("utf-8")
     self.send_response(status)
     self.send_header("Content-Type", "application/json")
     self.send_header("Content-Length", str(len(data)))
-    self.send_header("Access-Control-Allow-Origin", "*")
-    self.send_header("Access-Control-Allow-Headers", "Content-Type")
+    self._send_cors_headers()
     self.end_headers()
     self.wfile.write(data)
 
@@ -104,16 +112,13 @@ class Handler(BaseHTTPRequestHandler):
     self.send_response(status)
     self.send_header("Content-Type", mime_type)
     self.send_header("Content-Length", str(len(data)))
-    self.send_header("Access-Control-Allow-Origin", "*")
-    self.send_header("Access-Control-Allow-Headers", "Content-Type")
+    self._send_cors_headers()
     self.end_headers()
     self.wfile.write(data)
 
   def do_OPTIONS(self) -> None:
     self.send_response(204)
-    self.send_header("Access-Control-Allow-Origin", "*")
-    self.send_header("Access-Control-Allow-Headers", "Content-Type")
-    self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    self._send_cors_headers()
     self.end_headers()
 
   def do_GET(self) -> None:
