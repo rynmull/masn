@@ -79,6 +79,14 @@ Expected endpoint contract:
 Notes:
 - If Chatterbox synthesis fails or is unavailable, the app falls back to native TTS.
 
+## Strict Local-Only Mode
+Set `EXPO_PUBLIC_FORCE_LOCAL_ONLY=true` to force fully local speech behavior.
+
+In this mode:
+- cloud/network TTS providers are disabled (`ElevenLabs`, `Proprietary`, `Chatterbox Turbo`)
+- caregiver engine choices are limited to `Local (Offline AI)` and `Native`
+- offline-only mode is locked on
+
 ## Voice Lab (Build Your Own AI Voices)
 - Use [voice_lab/README.md](voice_lab/README.md) to start consented voice collection and dataset prep.
 - Includes:

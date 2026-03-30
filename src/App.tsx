@@ -6,6 +6,7 @@ import { execSql, getAllSql, getFirstSql, runSql } from './lib/db';
 import { DEFAULT_SYMBOL_PROVIDER, type SymbolProviderId } from './utils/symbols';
 import { CORE_WORD_LABELS, DEFAULT_WORDS, LEGACY_DEFAULT_SPEAK_BY_LABEL } from './utils/defaultVocabulary';
 import { getEmotionSettings, type EmotionPreset } from './utils/ttsPresets';
+import { isForceLocalOnlyMode } from './utils/runtimeFlags';
 import type { TtsEngine } from './utils/tts';
 
 type AppMode = 'user' | 'caregiver';
@@ -48,6 +49,7 @@ const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
 };
 
 export default function App() {
+  const forceLocalOnlyMode = isForceLocalOnlyMode();
   const [mode, setMode] = useState<AppMode>('user');
   const [vocabulary, setVocabulary] = useState<Record<string, Array<{ label: string; speak: string; color: string; symbol?: string | null }>>>({});
   const [ttsSettings, setTtsSettings] = useState<TtsSettings>({
@@ -57,7 +59,7 @@ export default function App() {
     elevenLabsVoiceId: '',
     localVoicePackId: '',
     adaptiveStyleEnabled: true,
-    offlineOnlyMode: false,
+    offlineOnlyMode: forceLocalOnlyMode,
     expressiveVoiceEnabled: true,
     styleLearningEnabled: true,
     styleLearningRate: 0.85,
@@ -234,7 +236,11 @@ export default function App() {
       ttsEngineRow?.value === 'chatterbox'
     ) {
       const engine = ttsEngineRow.value;
-      setTtsSettings(prev => ({ ...prev, engine }));
+      if (forceLocalOnlyMode && engine !== 'native' && engine !== 'local') {
+        setTtsSettings(prev => ({ ...prev, engine: 'native' }));
+      } else {
+        setTtsSettings(prev => ({ ...prev, engine }));
+      }
     }
 
     const elevenLabsVoiceIdRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='elevenlabs_voice_id';");
@@ -254,7 +260,7 @@ export default function App() {
 
     const offlineOnlyModeRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_offline_only_mode';");
     if (offlineOnlyModeRow?.value === 'true' || offlineOnlyModeRow?.value === 'false') {
-      setTtsSettings(prev => ({ ...prev, offlineOnlyMode: offlineOnlyModeRow.value === 'true' }));
+      setTtsSettings(prev => ({ ...prev, offlineOnlyMode: forceLocalOnlyMode || offlineOnlyModeRow.value === 'true' }));
     }
 
     const expressiveVoiceRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_expressive_voice_enabled';");

@@ -8,6 +8,7 @@ import { ensureLocalTtsBridgeInstalled, getLocalTtsBridge } from './localTtsBrid
 import { registerPiperNativeModuleIfAvailable } from './piperNativeModule';
 import { registerPiperWebBridgeFromEnv } from './piperWebBridge';
 import { derivePiperSynthesisConfig } from './piperTuning';
+import { isForceLocalOnlyMode } from './runtimeFlags';
 import { getFirstSql, runSql } from '../lib/db';
 
 export type { TtsEngine } from './ttsEngine';
@@ -599,17 +600,17 @@ const PROVIDERS: Record<TtsEngine, TtsProvider> = {
   },
   elevenlabs: {
     id: 'elevenlabs',
-    isAvailable: settings => !settings.offlineOnlyMode && Boolean(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY),
+    isAvailable: settings => !settings.offlineOnlyMode && !isForceLocalOnlyMode() && Boolean(process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY),
     speak: speakWithElevenLabs,
   },
   proprietary: {
     id: 'proprietary',
-    isAvailable: settings => !settings.offlineOnlyMode && Boolean(getProprietaryTtsUrl()),
+    isAvailable: settings => !settings.offlineOnlyMode && !isForceLocalOnlyMode() && Boolean(getProprietaryTtsUrl()),
     speak: speakWithProprietary,
   },
   chatterbox: {
     id: 'chatterbox',
-    isAvailable: settings => !settings.offlineOnlyMode && Boolean(getChatterboxTtsUrl()),
+    isAvailable: settings => !settings.offlineOnlyMode && !isForceLocalOnlyMode() && Boolean(getChatterboxTtsUrl()),
     speak: speakWithChatterbox,
   },
 };
@@ -619,8 +620,12 @@ export const speakText = async (text: string, settings: RuntimeTtsSettings, emot
   if (!normalizedText) return;
 
   const runtimeSettings = await withAdaptiveEmotionSettings(normalizedText, settings, emotion);
+  const forceLocalOnly = isForceLocalOnlyMode();
+  const effectiveEngine: TtsEngine = forceLocalOnly && runtimeSettings.engine !== 'local' && runtimeSettings.engine !== 'native'
+    ? 'native'
+    : runtimeSettings.engine;
 
-  const providerOrder = getProviderFallbackOrder(runtimeSettings.engine);
+  const providerOrder = getProviderFallbackOrder(effectiveEngine);
   let lastError: unknown = null;
 
   for (const providerId of providerOrder) {
@@ -639,7 +644,7 @@ export const speakText = async (text: string, settings: RuntimeTtsSettings, emot
     }
   }
 
-  if (runtimeSettings.engine !== 'native') {
+  if (effectiveEngine !== 'native') {
     console.warn('Falling back to native speech after provider failures.', lastError);
   }
 

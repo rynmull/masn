@@ -27,6 +27,7 @@ import { DEFAULT_CATEGORIES, DEFAULT_WORDS, LEGACY_DEFAULT_SPEAK_BY_LABEL } from
 import { speakText, stopAllSpeech } from '../utils/tts';
 import { recordVoiceFeedback } from '../utils/tts';
 import { isLocalTtsBridgeInstalled } from '../utils/localTtsBridge';
+import { isForceLocalOnlyMode } from '../utils/runtimeFlags';
 
 interface Word {
   id?: number;
@@ -145,6 +146,7 @@ export default function CaregiverScreen({
   userPopulation: UserPopulation;
   onUserPopulationChange: (nextPopulation: UserPopulation) => void;
 }) {
+  const forceLocalOnlyMode = isForceLocalOnlyMode();
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [savedPinHash, setSavedPinHash] = useState<string | null>(null);
@@ -169,7 +171,7 @@ export default function CaregiverScreen({
     elevenLabsVoiceId: '',
     localVoicePackId: '',
     adaptiveStyleEnabled: true,
-    offlineOnlyMode: false,
+    offlineOnlyMode: forceLocalOnlyMode,
     expressiveVoiceEnabled: true,
     styleLearningEnabled: true,
     styleLearningRate: 0.85,
@@ -435,7 +437,11 @@ export default function CaregiverScreen({
       ttsEngineRow?.value === 'chatterbox'
     ) {
       const engine = ttsEngineRow.value;
-      setTtsSettings(prev => ({ ...prev, engine }));
+      if (forceLocalOnlyMode && engine !== 'native' && engine !== 'local') {
+        setTtsSettings(prev => ({ ...prev, engine: 'native' }));
+      } else {
+        setTtsSettings(prev => ({ ...prev, engine }));
+      }
     }
 
     const elevenLabsVoiceIdRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='elevenlabs_voice_id';");
@@ -455,7 +461,7 @@ export default function CaregiverScreen({
 
     const offlineOnlyModeRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_offline_only_mode';");
     if (offlineOnlyModeRow?.value === 'true' || offlineOnlyModeRow?.value === 'false') {
-      setTtsSettings(prev => ({ ...prev, offlineOnlyMode: offlineOnlyModeRow.value === 'true' }));
+      setTtsSettings(prev => ({ ...prev, offlineOnlyMode: forceLocalOnlyMode || offlineOnlyModeRow.value === 'true' }));
     }
 
     const expressiveVoiceRow = await getFirstSql<{ value: string }>("SELECT value FROM settings WHERE key='tts_expressive_voice_enabled';");
@@ -1260,7 +1266,10 @@ export default function CaregiverScreen({
               </View>
               <Text style={styles.settingLabel}>Voice Engine</Text>
               <View style={styles.presetRow}>
-                {(['local', 'native', 'elevenlabs', 'chatterbox', 'proprietary'] as const).map(engine => (
+                {(forceLocalOnlyMode
+                  ? (['local', 'native'] as const)
+                  : (['local', 'native', 'elevenlabs', 'chatterbox', 'proprietary'] as const)
+                ).map(engine => (
                   <TouchableOpacity
                     key={engine}
                     style={[
@@ -1399,11 +1408,17 @@ export default function CaregiverScreen({
                 <Text style={styles.settingLabel}>Offline Only Mode</Text>
                 <TouchableOpacity
                   style={[styles.toggleButton, ttsSettings.offlineOnlyMode && styles.toggleButtonActive]}
-                  onPress={() => setTtsSettings(prev => ({ ...prev, offlineOnlyMode: !prev.offlineOnlyMode }))}
+                  onPress={() => {
+                    if (forceLocalOnlyMode) return;
+                    setTtsSettings(prev => ({ ...prev, offlineOnlyMode: !prev.offlineOnlyMode }));
+                  }}
                 >
                   <Text style={styles.toggleButtonText}>{ttsSettings.offlineOnlyMode ? 'On' : 'Off'}</Text>
                 </TouchableOpacity>
               </View>
+              {forceLocalOnlyMode ? (
+                <Text style={styles.providerNote}>Local-only mode is enforced by EXPO_PUBLIC_FORCE_LOCAL_ONLY=true.</Text>
+              ) : null}
               <View style={styles.settingRow}>
                 <Text style={styles.settingLabel}>Style Learning</Text>
                 <TouchableOpacity
